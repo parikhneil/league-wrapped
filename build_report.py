@@ -205,7 +205,7 @@ def build_page(include, all_seasons, names, canon, title, nav_html):
     season_sections, champ_rows = [], []
     scores = []   # (points, uid, label, week)
     games = []    # (margin, winner, loser, wpts, lpts, label, week)
-    h2h = defaultdict(lambda: [0, 0])
+    h2h = {k: defaultdict(lambda: [0, 0]) for k in ("reg", "po", "con")}
     n = lambda uid: names.get(uid, "Unknown")
     used = []
 
@@ -294,8 +294,43 @@ def build_page(include, all_seasons, names, canon, title, nav_html):
                 else:
                     win, lose, wp, lp = ub, ua, pb_, pa_
                 games.append((wp - lp, win, lose, wp, lp, label, week))
-                h2h[(win, lose)][0] += 1
-                h2h[(lose, win)][1] += 1
+                h2h["reg"][(win, lose)][0] += 1
+                h2h["reg"][(lose, win)][1] += 1
+
+        # ---- playoff / consolation games (head-to-head only) ----
+        def add_h2h(kind, w_rid, l_rid, roster_owner=roster_owner):
+            win, lose = roster_owner.get(w_rid), roster_owner.get(l_rid)
+            if win and lose:
+                h2h[kind][(win, lose)][0] += 1
+                h2h[kind][(lose, win)][1] += 1
+
+        if src == "Sleeper":
+            for kind, bracket in (("po", d["bracket"]),
+                                  ("con", load(folder / "losers_bracket.json", []) or [])):
+                for m in bracket:
+                    if isinstance(m.get("w"), int) and isinstance(m.get("l"), int):
+                        add_h2h(kind, m["w"], m["l"])
+        else:
+            for week in range(playoff_start, 19):
+                matchups = load(folder / f"matchups_week_{week}.json")
+                if not matchups:
+                    continue
+                groups = defaultdict(list)
+                for m in matchups:
+                    if m.get("matchup_id") is not None:
+                        groups[m["matchup_id"]].append(m)
+                for pair in groups.values():
+                    if len(pair) != 2 or pair[0].get("bracket") in (None, "NONE"):
+                        continue
+                    a, b = pair
+                    pa_, pb_ = a.get("points") or 0, b.get("points") or 0
+                    if pa_ == pb_:
+                        continue
+                    kind = "po" if a["bracket"] == "WINNERS_BRACKET" else "con"
+                    if pa_ > pb_:
+                        add_h2h(kind, a["roster_id"], b["roster_id"])
+                    else:
+                        add_h2h(kind, b["roster_id"], a["roster_id"])
 
     parts = []
 
@@ -347,18 +382,29 @@ def build_page(include, all_seasons, names, canon, title, nav_html):
 
     uids = sorted(alltime.keys(), key=lambda u: n(u).lower())
     headers = ["Manager"] + [n(u) for u in uids]
-    rows = []
-    for a in uids:
-        row = [n(a)]
-        for b in uids:
-            if a == b:
-                row.append("-")
-            else:
-                w, l = h2h[(a, b)]
+
+    def grid(kind):
+        rows = []
+        for a in uids:
+            row = [n(a)]
+            for b in uids:
+                if a == b:
+                    row.append("-")
+                    continue
+                kinds = ("reg", "po", "con") if kind == "all" else (kind,)
+                w = sum(h2h[k][(a, b)][0] for k in kinds)
+                l = sum(h2h[k][(a, b)][1] for k in kinds)
                 row.append(f"{w}-{l}" if (w or l) else "")
-        rows.append(row)
-    parts.append("<h2>Head-to-head (row manager's record vs column manager, regular season)</h2>"
-                 + '<div class="scroll">' + table(headers, rows) + "</div>")
+            rows.append(row)
+        return table(headers, rows)
+
+    modes = [("reg", "Regular season"), ("po", "Playoffs"), ("con", "Consolation"), ("all", "All games")]
+    btns = "".join(f'<button class="mode{" on" if k == "reg" else ""}" data-m="{k}">{esc(t)}</button>'
+                   for k, t in modes)
+    grids = "".join(f'<div class="scroll h2h" data-m="{k}"{"" if k == "reg" else " hidden"}>{grid(k)}</div>'
+                    for k, _ in modes)
+    parts.append("<h2>Head-to-head</h2><p class=\"sub\">Row manager's record vs the column manager.</p>"
+                 + f'<div class="toggle">{btns}</div>' + grids)
 
     parts.append("<h2>Season standings</h2>")
     for label, srows in reversed(season_sections):
@@ -385,6 +431,9 @@ def build_page(include, all_seasons, names, canon, title, nav_html):
   th.asc::after {{ content: ' ▲'; opacity: 1; }}
   th.desc::after {{ content: ' ▼'; opacity: 1; }}
   .scroll {{ overflow-x: auto; }}
+  .toggle {{ margin: 8px 0 12px; }}
+  button.mode {{ padding: 6px 12px; margin-right: 6px; border: 1px solid var(--line); background: var(--head); color: var(--fg); border-radius: 6px; cursor: pointer; }}
+  button.mode.on {{ background: var(--fg); color: var(--bg); }}
 </style></head><body>
 <h1>{esc(title)}</h1>
 <nav>{nav_html}</nav>
@@ -412,10 +461,128 @@ document.querySelectorAll('table.sortable').forEach(table => {{
     }});
   }});
 }});
+document.querySelectorAll('button.mode').forEach(b => b.addEventListener('click', () => {{
+  document.querySelectorAll('button.mode').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.h2h').forEach(g => {{ g.hidden = g.dataset.m !== b.dataset.m; }});
+}}));
 const at = document.querySelector('#alltime');
 if (at) {{ const th = at.tHead.rows[0].cells[3]; th.classList.add('desc'); th.dataset.asc = '0'; }}
 </script>
 </body></html>"""
+
+
+PLAYERS_HTML = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Players</title>
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --line:#e2e2e2; --head:#f4f4f4; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#15171a; --fg:#e8e8e8; --muted:#9aa0a6; --line:#2c2f33; --head:#1f2226; } }
+  body { font-family: -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg); max-width:1200px; margin:0 auto; padding:24px 16px 64px; }
+  nav a { margin-right: 14px; } .sub { color:var(--muted); }
+  input { width:100%; max-width:420px; padding:8px 10px; font-size:16px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  #list button { display:block; width:100%; max-width:420px; text-align:left; padding:8px 10px; border:1px solid var(--line); border-top:0; background:var(--head); color:var(--fg); cursor:pointer; font-size:14px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; } .scroll { overflow-x:auto; }
+  th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } th { background:var(--head); }
+  small { color:var(--muted); font-weight:normal; }
+</style></head><body>
+<h1>Players</h1>
+<nav>__NAV__</nav>
+<p class="sub">Search any player who was ever on a roster in your Sleeper league. ESPN seasons aren't included yet.</p>
+<input id="q" placeholder="Search a player, e.g. Mahomes" autocomplete="off">
+<div id="list"></div><div id="out"></div>
+<script>
+const DATA = __DATA__;
+const q = document.getElementById('q'), list = document.getElementById('list'), out = document.getElementById('out');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function show(i) {
+  const [name, pos, tm, rows] = DATA[i];
+  let h = `<h2>${esc(name)} <small>${esc(pos)} ${esc(tm)}</small></h2><div class="scroll"><table><thead><tr><th>Season</th><th>Manager</th><th>Record on roster</th><th>Record when started</th><th>Weeks rostered</th><th>Weeks started</th><th>Avg PPG</th><th>Playoffs</th><th>Champion</th></tr></thead><tbody>`;
+  for (const r of rows) h += `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td>${r[6] === null ? '–' : r[6]}</td><td>${r[7] ? '✔' : ''}</td><td>${r[8] ? '🏆' : ''}</td></tr>`;
+  out.innerHTML = h + '</tbody></table></div>';
+  list.innerHTML = '';
+}
+q.addEventListener('input', () => {
+  const t = q.value.trim().toLowerCase();
+  list.innerHTML = '';
+  if (t.length < 2) return;
+  let n = 0;
+  for (let i = 0; i < DATA.length && n < 10; i++) {
+    if (DATA[i][0].toLowerCase().includes(t)) {
+      const b = document.createElement('button');
+      b.textContent = DATA[i][0] + (DATA[i][1] ? ' · ' + DATA[i][1] : '');
+      b.onclick = () => { q.value = DATA[i][0]; show(i); };
+      list.appendChild(b); n++;
+    }
+  }
+});
+</script></body></html>"""
+
+
+def build_players_page(all_seasons, shown, canon, nav_html):
+    """Per-player history from Sleeper weekly rosters (data/ + data/players.json)."""
+    pdb = load(Path("data") / "players.json", {}) or {}
+    stats, info = {}, {}
+    for d in all_seasons:
+        if d["src"] != "Sleeper":
+            continue
+        season, folder = d["season"], d["folder"]
+        owner = {r["roster_id"]: canon.get(("Sleeper", r.get("owner_id"))) for r in d["rosters"]}
+        final = next((m for m in d["bracket"] if m.get("p") == 1), None)
+        champ = final.get("w") if final else None
+        po_ids = playoff_roster_ids(d)
+        for r in d["rosters"]:
+            st = r.get("settings", {})
+            rec = f"{st.get('wins', 0)}-{st.get('losses', 0)}" + (f"-{st['ties']}" if st.get("ties") else "")
+            info[(season, r["roster_id"])] = {"m": shown.get(owner.get(r["roster_id"]), "Unknown"), "rec": rec,
+                                              "po": int(r["roster_id"] in po_ids), "ch": int(r["roster_id"] == champ)}
+        start = d["league"].get("settings", {}).get("playoff_week_start", 15) or 15
+        for week in range(1, 19):
+            matchups = load(folder / f"matchups_week_{week}.json")
+            if not matchups:
+                continue
+            groups = defaultdict(list)
+            for m in matchups:
+                if m.get("matchup_id") is not None:
+                    groups[m["matchup_id"]].append(m)
+            for pair in groups.values():
+                if len(pair) != 2:
+                    continue
+                for me, opp in (pair, pair[::-1]):
+                    mine, theirs = me.get("points") or 0, opp.get("points") or 0
+                    if not (mine or theirs):
+                        continue  # week hasn't been played yet
+                    res = None
+                    if week < start:
+                        res = "w" if mine > theirs else "l" if mine < theirs else "t"
+                    starters, pp = set(me.get("starters") or []), me.get("players_points") or {}
+                    for pid in me.get("players") or []:
+                        s = stats.setdefault((pid, season, me["roster_id"]),
+                                             {"wk": 0, "st": 0, "pts": 0.0, "w": 0, "l": 0, "t": 0, "xw": 0, "xl": 0, "xt": 0})
+                        s["wk"] += 1
+                        if pid in starters:
+                            s["st"] += 1
+                            s["pts"] += pp.get(pid) or 0
+                            if res:
+                                s["x" + res] += 1
+                        if res:
+                            s[res] += 1
+    by_player = defaultdict(list)
+    for (pid, season, rid), s in stats.items():
+        t = info.get((season, rid))
+        if t:
+            wl = f"{s['w']}-{s['l']}" + (f"-{s['t']}" if s["t"] else "")
+            xl = f"{s['xw']}-{s['xl']}" + (f"-{s['xt']}" if s["xt"] else "")
+            ppg = round(s["pts"] / s["st"], 1) if s["st"] else None
+            by_player[pid].append([season, t["m"], wl, xl, s["wk"], s["st"], ppg, t["po"], t["ch"]])
+    out = []
+    for pid, rows in by_player.items():
+        p = pdb.get(pid, {})
+        name = p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() or str(pid)
+        out.append([name, p.get("position") or "", p.get("team") or "", sorted(rows, key=lambda r: r[0])])
+    out.sort(key=lambda x: x[0].lower())
+    data = json.dumps(out).replace("</", "<\\/")
+    return PLAYERS_HTML.replace("__NAV__", nav_html).replace("__DATA__", data)
 
 
 def main():
@@ -434,10 +601,16 @@ def main():
             pages.append((f"report_{s.lower()}.html", {s}, f"League History: {s}", s))
 
     nav = " ".join(f'<a href="{f}">{esc(label)}</a>' for f, _, _, label in pages)
+    if "Sleeper" in srcs:
+        nav += ' <a href="players.html">Players</a>'
     for filename, include, title, _ in pages:
         Path(filename).write_text(
             build_page(include, all_seasons, shown, canon, title, nav), encoding="utf-8")
         print(f"Wrote {filename}")
+
+    if "Sleeper" in srcs:
+        Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")
+        print("Wrote players.html")
 
     if unmatched:
         print("\nThese ESPN managers weren't matched to a Sleeper account, so they show up as")
