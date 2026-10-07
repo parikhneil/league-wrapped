@@ -16,6 +16,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore saved Sleeper data
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: sleeper-data-${{ github.run_id }}
+          restore-keys: sleeper-data-
       - run: pip install requests
       - run: python fetch_sleeper_history.py
       - run: python build_report.py

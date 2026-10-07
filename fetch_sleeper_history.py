@@ -3,10 +3,11 @@ Download the full history of a Sleeper fantasy football league to local JSON fil
 
 Usage:
     pip install requests
-    python fetch_sleeper_history.py
+    python fetch_sleeper_history.py           # fast: skips finished seasons already saved
+    python fetch_sleeper_history.py --full    # re-download every season from scratch
 
 Output (in ./data/):
-    players.json                      - NFL player ID -> name/position/team (cached)
+    players.json                      - NFL player ID -> name/position/team (refreshed weekly)
     seasons.json                      - list of season summaries, newest first
     {season}/league.json              - league settings and scoring
     {season}/users.json               - managers
@@ -19,6 +20,7 @@ Output (in ./data/):
     {season}/losers_bracket.json
 """
 
+import argparse
 import json
 import time
 from pathlib import Path
@@ -30,6 +32,7 @@ BASE = "https://api.sleeper.app/v1"
 DATA_DIR = Path("data")
 MAX_WEEKS = 18          # regular season + playoffs; empty weeks are skipped
 PAUSE = 0.15            # polite delay between calls (Sleeper asks to stay under ~1000 calls/min)
+PLAYERS_MAX_AGE = 7 * 24 * 3600   # re-download the big player list after a week
 
 
 def get(path):
@@ -55,19 +58,36 @@ def save(obj, path):
         json.dump(obj, f, indent=2)
 
 
-def fetch_players():
-    """Big file (~5MB+). Download once, reuse afterward."""
+def fetch_players(full=False):
+    """Big file (~5MB+). Re-downloaded at most once a week (Sleeper asks for at most daily)."""
     out = DATA_DIR / "players.json"
-    if out.exists():
-        print("players.json already cached, skipping")
+    stamp = DATA_DIR / "players_fetched.txt"
+    try:
+        age = time.time() - float(stamp.read_text())
+    except (OSError, ValueError):
+        age = None
+    if out.exists() and not full and age is not None and age < PLAYERS_MAX_AGE:
+        print(f"players.json is {age / 86400:.1f} day(s) old, reusing it")
         return
-    print("Downloading NFL player database (one time)...")
+    print("Downloading NFL player database...")
     players = get("players/nfl")
     if players:
         save(players, out)
+        stamp.write_text(str(time.time()))
 
 
-def fetch_season(league_id):
+def already_saved(folder):
+    """True if this season was saved after it finished, so it can't have changed."""
+    saved = folder / "league.json"
+    if not (saved.exists() and (folder / "rosters.json").exists()):
+        return False
+    try:
+        return json.loads(saved.read_text()).get("status") == "complete"
+    except (OSError, ValueError):
+        return False
+
+
+def fetch_season(league_id, full=False):
     """Fetch everything for one season. Returns the league dict (for previous_league_id)."""
     league = get(f"league/{league_id}")
     if not league:
@@ -76,6 +96,9 @@ def fetch_season(league_id):
     season = league["season"]
     folder = DATA_DIR / season
     print(f"\n=== Season {season} (league {league_id}) ===")
+    if not full and league.get("status") == "complete" and already_saved(folder):
+        print("  finished season already saved, skipping")
+        return league
 
     save(league, folder / "league.json")
     save(get(f"league/{league_id}/users"), folder / "users.json")
@@ -106,14 +129,19 @@ def fetch_season(league_id):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Download Sleeper league history.")
+    parser.add_argument("--full", action="store_true",
+                        help="re-download every season, even finished ones already saved")
+    args = parser.parse_args()
+
     DATA_DIR.mkdir(exist_ok=True)
-    fetch_players()
+    fetch_players(args.full)
 
     seasons = []
     league_id = LEAGUE_ID
     # Walk backward through previous_league_id until the chain ends
     while league_id and league_id != "0":
-        league = fetch_season(league_id)
+        league = fetch_season(league_id, args.full)
         if not league:
             break
         seasons.append({
