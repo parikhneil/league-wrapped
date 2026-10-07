@@ -184,8 +184,15 @@ def apply_real_names(names, aliases):
     return shown, sorted(unlisted, key=str.lower)
 
 
+def season_done(d):
+    """Sleeper marks finished seasons 'complete'; ESPN data has no status (always finished)."""
+    return d["league"].get("status", "complete") == "complete"
+
+
 def playoff_roster_ids(d):
-    """Roster ids that made the playoffs that season."""
+    """Roster ids that made the playoffs that season (none until the season is complete)."""
+    if not season_done(d):
+        return set()
     ids = d["league"].get("playoff_roster_ids")
     if ids:
         return set(ids)
@@ -241,7 +248,7 @@ def build_page(include, all_seasons, names, canon, title, nav_html):
         rows.sort(key=lambda x: (-x[1], -x[4]))
 
         # ---- champion / runner-up ----
-        final = next((m for m in d["bracket"] if m.get("p") == 1), None)
+        final = next((m for m in d["bracket"] if m.get("p") == 1), None) if season_done(d) else None
         champ = runner = None
         if final and final.get("w"):
             champ = roster_owner.get(final["w"])
@@ -528,7 +535,7 @@ def build_players_page(all_seasons, shown, canon, nav_html):
             continue
         season, folder = d["season"], d["folder"]
         owner = {r["roster_id"]: canon.get(("Sleeper", r.get("owner_id"))) for r in d["rosters"]}
-        final = next((m for m in d["bracket"] if m.get("p") == 1), None)
+        final = next((m for m in d["bracket"] if m.get("p") == 1), None) if season_done(d) else None
         champ = final.get("w") if final else None
         po_ids = playoff_roster_ids(d)
         for r in d["rosters"]:
@@ -585,6 +592,22 @@ def build_players_page(all_seasons, shown, canon, nav_html):
     return PLAYERS_HTML.replace("__NAV__", nav_html).replace("__DATA__", data)
 
 
+def export_espn_js(all_seasons, shown, canon):
+    """Write espn_league.js: ESPN seasons (managers matched to Sleeper ids) + real names, for index.html."""
+    seasons = []
+    for d in all_seasons:
+        if d["src"] != "ESPN":
+            continue
+        rosters = [dict(r, owner_id=canon.get(("ESPN", r.get("owner_id")), r.get("owner_id"))) for r in d["rosters"]]
+        owners = sorted({r["owner_id"] for r in rosters if r.get("owner_id")})
+        weeks = [load(d["folder"] / f"matchups_week_{w}.json", []) or [] for w in range(1, 19)]
+        seasons.append({"src": "ESPN", "league": dict(d["league"], status="complete"),
+                        "users": [{"user_id": o, "display_name": shown.get(o, o)} for o in owners],
+                        "rosters": rosters, "bracket": d["bracket"], "weeks": weeks})
+    js = ("window.ESPN_SEASONS = " + json.dumps(seasons) + ";\nwindow.LEAGUE_NAMES = " + json.dumps(shown) + ";\n")
+    Path("espn_league.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
+
+
 def main():
     all_seasons = load_all()
     if not all_seasons:
@@ -608,6 +631,9 @@ def main():
             build_page(include, all_seasons, shown, canon, title, nav), encoding="utf-8")
         print(f"Wrote {filename}")
 
+    if "ESPN" in srcs:
+        export_espn_js(all_seasons, shown, canon)
+        print("Wrote espn_league.js")
     if "Sleeper" in srcs:
         Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")
         print("Wrote players.html")
