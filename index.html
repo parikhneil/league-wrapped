@@ -180,7 +180,7 @@ function managerNames() {
   return names;
 }
 
-// Per-player history from Sleeper weekly rosters
+// Per-player history from weekly rosters (Sleeper, plus ESPN seasons that have lineups)
 function buildPlayerStats(seasons, names) {
   const stats = {};
   for (const s of seasons) {
@@ -188,7 +188,11 @@ function buildPlayerStats(seasons, names) {
     s.rosters.forEach(r => owner[r.roster_id] = r.owner_id);
     const fin = done ? s.bracket.find(m => m.p === 1) : null, champ = fin ? fin.w : null;
     const po = new Set();
-    if (done) s.bracket.forEach(m => ['t1','t2','w','l'].forEach(k => Number.isInteger(m[k]) && po.add(m[k])));
+    if (done) {
+      s.bracket.forEach(m => ['t1','t2','w','l'].forEach(k => Number.isInteger(m[k]) && po.add(m[k])));
+      (L.playoff_roster_ids || []).forEach(i => po.add(i));
+    }
+    const label = s.src === 'ESPN' ? `${L.season} (ESPN)` : L.season;
     const start = L.settings?.playoff_week_start || 15;
     s.weeks.forEach((wk, i) => {
       const g = {};
@@ -201,8 +205,8 @@ function buildPlayerStats(seasons, names) {
           const res = i + 1 < start ? (mine > theirs ? 'w' : mine < theirs ? 'l' : 't') : null;
           const starters = new Set(me.starters || []), pp = me.players_points || {};
           for (const pid of me.players || []) {
-            const x = ((stats[pid] ??= {})[`${L.season}|${me.roster_id}`] ??= {
-              season: L.season, m: names[owner[me.roster_id]] || 'Unknown', wk: 0, st: 0, pts: 0,
+            const x = ((stats[pid] ??= {})[`${label}|${me.roster_id}`] ??= {
+              season: label, m: names[owner[me.roster_id]] || 'Unknown', wk: 0, st: 0, pts: 0,
               w: 0, l: 0, t: 0, xw: 0, xl: 0, xt: 0, po: po.has(me.roster_id), ch: me.roster_id === champ});
             x.wk++;
             if (res) x[res]++;
@@ -224,7 +228,8 @@ function buildPlayerStats(seasons, names) {
 async function preparePlayers() {
   if (!loaded || players) return;
   const token = loadToken;
-  const stats = buildPlayerStats(loaded.sl, managerNames());
+  const espnLineups = loaded.espn.filter(s => s.weeks.some(w => (w || []).some(m => (m.players || []).length)));
+  const stats = buildPlayerStats([...espnLineups, ...loaded.sl], managerNames());
   const known = (loaded.isDefault && window.PLAYER_NAMES) || {};
   let db = {};
   if (Object.keys(stats).some(pid => !known[pid])) {
@@ -239,7 +244,7 @@ async function preparePlayers() {
     return [name, k ? k[1] : (p.position || ''), k ? k[2] : (p.team || ''), rows];
   }).sort((a, b) => a[0].localeCompare(b[0]));
   $('pstatus').textContent = `${players.length} players who've been on a roster in this league.` +
-    (loaded.espn.length ? ' Sleeper seasons only; ESPN lineups aren\'t included yet.' : '');
+    (loaded.espn.length > espnLineups.length ? ' Sleeper seasons only; ESPN lineups aren\'t included yet.' : '');
   searchPlayers();
 }
 

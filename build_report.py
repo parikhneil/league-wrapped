@@ -14,6 +14,7 @@ Creates:
 
 import html
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -592,8 +593,68 @@ def build_players_page(all_seasons, shown, canon, nav_html):
     return PLAYERS_HTML.replace("__NAV__", nav_html).replace("__DATA__", data)
 
 
+ESPN_TEAM_FIX = {"WSH": "WAS"}   # ESPN and Sleeper team codes that differ
+
+
+def name_key(name):
+    """Normalize a player name for matching: lowercase, no punctuation or Jr./III suffixes."""
+    s = re.sub(r"[^a-z ]", "", str(name).lower().replace("-", " ").replace(".", ""))
+    return " ".join(w for w in s.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
+
+
+def espn_to_sleeper_ids(all_seasons):
+    """Map ESPN player ids to Sleeper ids by name + position (team defenses by team code),
+    so a player's ESPN and Sleeper seasons show up together. Players that can't be matched
+    keep an 'espn:<id>' id. Returns (id_map, names) where names covers every ESPN player."""
+    pdb = load(Path("data") / "players.json", {}) or {}
+    cands = defaultdict(list)   # (name_key, position) -> [sleeper ids]
+    by_name = defaultdict(list)  # name_key -> [sleeper ids]
+    for sid, p in pdb.items():
+        if p.get("position") == "DEF":
+            continue
+        k = name_key(p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}")
+        if k:
+            cands[(k, p.get("position") or "")].append(sid)
+            by_name[k].append(sid)
+
+    def pick(ids, team):
+        if len(ids) == 1:
+            return ids[0]
+        same_team = [i for i in ids if pdb[i].get("team") == team]
+        active = [i for i in ids if pdb[i].get("active")]
+        return (same_team or active or ids)[0] if ids else None
+
+    id_map, extra, unmatched = {}, {}, 0
+    for d in all_seasons:
+        if d["src"] != "ESPN":
+            continue
+        for eid, (name, pos, team) in (load(d["folder"] / "players.json", {}) or {}).items():
+            if eid in id_map:
+                continue
+            team = ESPN_TEAM_FIX.get(team, team)
+            if pos == "D/ST":
+                sid = team if team in pdb else None
+            else:
+                k = name_key(name)
+                sid = pick(cands.get((k, pos), []), team) or (by_name[k][0] if len(by_name.get(k, [])) == 1 else None)
+            if sid:
+                id_map[eid] = sid
+                p = pdb.get(sid, {})   # name file needs players who were only ever on ESPN rosters too
+                extra.setdefault(sid, [p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() or name,
+                                       p.get("position") or pos, p.get("team") or team])
+            else:
+                id_map[eid] = f"espn:{eid}"
+                extra[f"espn:{eid}"] = [name, pos, team]
+                unmatched += 1
+    if id_map:
+        print(f"Matched {len(id_map) - unmatched} of {len(id_map)} ESPN players to Sleeper players")
+    return id_map, extra
+
+
 def export_espn_js(all_seasons, shown, canon):
-    """Write espn_league.js: ESPN seasons (managers matched to Sleeper ids) + real names, for index.html."""
+    """Write espn_league.js: ESPN seasons (managers and players matched to Sleeper ids) + real names,
+    for index.html. Returns names for every ESPN player, for player_names.js."""
+    id_map, extra = espn_to_sleeper_ids(all_seasons)
     seasons = []
     for d in all_seasons:
         if d["src"] != "ESPN":
@@ -601,14 +662,20 @@ def export_espn_js(all_seasons, shown, canon):
         rosters = [dict(r, owner_id=canon.get(("ESPN", r.get("owner_id")), r.get("owner_id"))) for r in d["rosters"]]
         owners = sorted({r["owner_id"] for r in rosters if r.get("owner_id")})
         weeks = [load(d["folder"] / f"matchups_week_{w}.json", []) or [] for w in range(1, 19)]
+        for wk in weeks:   # swap ESPN player ids for the matching Sleeper ids
+            for m in wk:
+                m["players"] = [id_map.get(str(x), f"espn:{x}") for x in m.get("players") or []]
+                m["starters"] = [id_map.get(str(x), f"espn:{x}") for x in m.get("starters") or []]
+                m["players_points"] = {id_map.get(str(k), f"espn:{k}"): v for k, v in (m.get("players_points") or {}).items()}
         seasons.append({"src": "ESPN", "league": dict(d["league"], status="complete"),
                         "users": [{"user_id": o, "display_name": shown.get(o, o)} for o in owners],
                         "rosters": rosters, "bracket": d["bracket"], "weeks": weeks})
     js = ("window.ESPN_SEASONS = " + json.dumps(seasons) + ";\nwindow.LEAGUE_NAMES = " + json.dumps(shown) + ";\n")
     Path("espn_league.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
+    return extra
 
 
-def export_player_names_js(all_seasons):
+def export_player_names_js(all_seasons, extra=None):
     """Write player_names.js: {player_id: [name, position, team]} for every player who
     appeared on a roster in the Sleeper league, so index.html doesn't need Sleeper's
     full multi-megabyte player list."""
@@ -625,6 +692,7 @@ def export_player_names_js(all_seasons):
         p = pdb.get(pid, {})
         name = p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() or pid
         out[pid] = [name, p.get("position") or "", p.get("team") or ""]
+    out.update(extra or {})
     js = "window.PLAYER_NAMES = " + json.dumps(out, separators=(",", ":")) + ";\n"
     Path("player_names.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
 
@@ -652,11 +720,12 @@ def main():
             build_page(include, all_seasons, shown, canon, title, nav), encoding="utf-8")
         print(f"Wrote {filename}")
 
+    espn_extra = {}
     if "ESPN" in srcs:
-        export_espn_js(all_seasons, shown, canon)
+        espn_extra = export_espn_js(all_seasons, shown, canon)
         print("Wrote espn_league.js")
     if "Sleeper" in srcs:
-        export_player_names_js(all_seasons)
+        export_player_names_js(all_seasons, espn_extra)
         print("Wrote player_names.js")
     if "Sleeper" in srcs:
         Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")

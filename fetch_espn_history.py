@@ -139,7 +139,8 @@ def fetch_year(year):
     save(bracket, folder / "winners_bracket.json")
     save([], folder / "losers_bracket.json")
 
-    # Weekly regular-season matchups
+    # Weekly matchups, with each team's lineup
+    player_info = {}  # ESPN player id -> [name, position, NFL team]
     for week in range(1, 18):  # regular season plus playoff weeks; empty weeks are skipped
         try:
             boxes = league.box_scores(week)
@@ -153,11 +154,26 @@ def fetch_year(year):
                 score = getattr(b, f"{side}_score", 0)
                 if team is None or isinstance(team, int):  # bye week
                     continue
+                players, starters, pts = [], [], {}
+                for pl in getattr(b, f"{side}_lineup", None) or []:
+                    pid = str(getattr(pl, "playerId", "") or "")
+                    if not pid:
+                        continue
+                    players.append(pid)
+                    pts[pid] = getattr(pl, "points", 0) or 0
+                    if getattr(pl, "slot_position", "BE") not in ("BE", "IR"):
+                        starters.append(pid)
+                    player_info[pid] = [getattr(pl, "name", "") or pid,
+                                        getattr(pl, "position", "") or "",
+                                        getattr(pl, "proTeam", "") or ""]
                 matchups.append({"roster_id": team.team_id, "matchup_id": i, "points": score,
-                                 "bracket": str(getattr(b, "matchup_type", "NONE"))})
+                                 "bracket": str(getattr(b, "matchup_type", "NONE")),
+                                 "players": players, "starters": starters, "players_points": pts})
         if matchups:
             save(matchups, folder / f"matchups_week_{week}.json")
+    save(player_info, folder / "players.json")
     print(f"  saved {len(league.teams)} teams (regular season = weeks 1-{reg_weeks}, plus any playoff weeks found)")
+    print(f"  saved lineups for {len(player_info)} players")
     return {"season": str(year), "league_id": str(LEAGUE_ID),
             "name": getattr(league.settings, "name", "ESPN League"),
             "status": "complete", "total_rosters": len(league.teams)}
