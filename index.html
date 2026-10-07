@@ -1,191 +1,257 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>League Wrapped</title>
-<style>
-  :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --line:#e2e2e2; --head:#f4f4f4; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#15171a; --fg:#e8e8e8; --muted:#9aa0a6; --line:#2c2f33; --head:#1f2226; } }
-  body { font-family: -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg); max-width:1200px; margin:0 auto; padding:24px 16px 64px; }
-  h2 { margin-top:36px; border-bottom:1px solid var(--line); padding-bottom:6px; }
-  .sub, #status { color:var(--muted); }
-  input { padding:8px 10px; font-size:16px; width:100%; max-width:380px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
-  button { padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:var(--head); color:var(--fg); cursor:pointer; margin:4px 6px 4px 0; }
-  table { border-collapse:collapse; width:100%; font-size:14px; } .scroll { overflow-x:auto; }
-  th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
-  th { background:var(--head); cursor:pointer; user-select:none; }
-  th::after { content:' ↕'; opacity:.35; font-size:.85em; }
-  th.asc::after { content:' ▲'; opacity:1; } th.desc::after { content:' ▼'; opacity:1; }
-  button.on { background:var(--fg); color:var(--bg); }
-  summary { cursor:pointer; margin:8px 0; font-weight:600; }
-</style></head><body>
-<h1>League Wrapped</h1>
-<p class="sub">Enter a Sleeper league ID (or your Sleeper username to pick a league) to see its full history.</p>
-<input id="q" placeholder="League ID or username" autocomplete="off">
-<button id="go">Load league</button><button id="reset">Our league</button>
-<div id="picker"></div>
-<div id="tabs"></div>
-<p id="status"></p>
-<div id="out"></div>
-<script src="espn_league.js"></script>
-<script>
-const DEFAULT_LEAGUE = "1381121078079795200";
-const API = "https://api.sleeper.app/v1";
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const get = async p => { const r = await fetch(API + p); if (!r.ok) throw new Error(r.status); return r.json(); };
-const setStatus = t => { $('status').textContent = t; };
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>League Wrapped</title>
+    <link rel="stylesheet" href="league.css" />
+  </head>
+  <body>
+    <h1>League Wrapped</h1>
+    <p class="sub">
+      Enter a Sleeper league ID (or your Sleeper username to pick a league) to
+      see its full history.
+    </p>
+    <input id="q" placeholder="League ID or username" autocomplete="off" />
+    <button id="go">Load league</button><button id="reset">Our league</button>
+    <div id="picker"></div>
+    <div id="tabs"></div>
+    <p id="status"></p>
+    <div id="out"></div>
+    <script src="espn_league.js"></script>
+    <script src="league-data.js"></script>
+    <script src="league-stats.js"></script>
+    <script src="league-ui.js"></script>
+    <script>
+      const DEFAULT_LEAGUE = "1381121078079795200";
+      const API = "https://api.sleeper.app/v1";
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      const get = async (p) => {
+        const r = await fetch(API + p, { signal: AbortSignal.timeout(20000) });
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      };
+      const setStatus = (t) => {
+        $("status").textContent = t;
+      };
 
-async function loadHistory(id) {
-  const seasons = [];
-  while (id && id !== "0") {
-    setStatus(`Loading league ${id}… (${seasons.length} season(s) so far)`);
-    const league = await get(`/league/${id}`);
-    const [users, rosters, bracket, weeks] = await Promise.all([
-      get(`/league/${id}/users`), get(`/league/${id}/rosters`),
-      get(`/league/${id}/winners_bracket`).catch(() => []),
-      Promise.all(Array.from({length: 18}, (_, i) => get(`/league/${id}/matchups/${i + 1}`).catch(() => []))),
-    ]);
-    seasons.push({league, users, rosters, bracket: bracket || [], weeks});
-    id = league.previous_league_id;
-  }
-  return seasons.reverse();
-}
+      async function loadHistory(id, version) {
+        const seasons = [],
+          visited = new Set();
+        while (id && id !== "0") {
+          if (visited.has(id))
+            throw new Error("Season history contains a cycle");
+          visited.add(id);
+          if (version === requestVersion)
+            setStatus(
+              `Loading league ${id}… (${seasons.length} season(s) so far)`,
+            );
+          const league = await get(`/league/${id}`);
+          if (!league?.league_id) throw new Error("League not found");
+          const missing = [];
+          const optional = (label, path) =>
+            get(path).catch(() => {
+              missing.push(label);
+              return [];
+            });
+          const [users, rosters, bracket, weeks, losersBracket] =
+            await Promise.all([
+              get(`/league/${id}/users`),
+              get(`/league/${id}/rosters`),
+              optional("Playoff bracket", `/league/${id}/winners_bracket`),
+              Promise.all(
+                Array.from({ length: 18 }, (_, i) =>
+                  optional(
+                    `Week ${i + 1} matchups`,
+                    `/league/${id}/matchups/${i + 1}`,
+                  ),
+                ),
+              ),
+              optional("Consolation bracket", `/league/${id}/losers_bracket`),
+            ]);
+          if (version === requestVersion)
+            setStatus(
+              `Loading draft and transaction history for ${league.season}…`,
+            );
+          const drafts = await optional("Draft list", `/league/${id}/drafts`);
+          const [picks, transactions] = await Promise.all([
+            Promise.all(
+              (drafts || []).map((d) =>
+                optional("Draft picks", `/draft/${d.draft_id}/picks`),
+              ),
+            ).then((a) => a.flat()),
+            Promise.all(
+              Array.from({ length: 18 }, (_, i) =>
+                optional(
+                  `Week ${i + 1} transactions`,
+                  `/league/${id}/transactions/${i + 1}`,
+                ),
+              ),
+            ).then((a) => a.flat()),
+          ]);
+          seasons.push({
+            league,
+            users,
+            rosters,
+            bracket: bracket || [],
+            losersBracket: losersBracket || [],
+            weeks,
+            picks,
+            transactions,
+            missing,
+          });
+          id = league.previous_league_id;
+        }
+        return seasons.reverse();
+      }
 
-function analyze(seasons) {
-  const many = new Set(seasons.map(s => s.src)).size > 1;
-  const names = {}, all = {}, champs = [], scores = [], h2h = {}, bySeason = [];
-  const A = u => all[u] ??= {w:0, l:0, t:0, pf:0, pa:0, seasons:0, po:0, titles:0, finals:0};
-  for (const s of seasons) {
-    const L = s.league, season = many ? `${L.season} (${s.src})` : L.season, owner = {};
-    const done = L.status === 'complete';
-    s.users.forEach(u => names[u.user_id] = u.display_name);
-    s.rosters.forEach(r => owner[r.roster_id] = r.owner_id);
-    const ids = new Set();
-    if (done) {
-      s.bracket.forEach(m => ['t1','t2','w','l'].forEach(k => Number.isInteger(m[k]) && ids.add(m[k])));
-      (L.playoff_roster_ids || []).forEach(i => ids.add(i));
-    }
-    const rows = s.rosters.filter(r => r.owner_id).map(r => {
-      const st = r.settings, t = st.ties || 0, a = A(r.owner_id);
-      const pf = st.fpts + (st.fpts_decimal || 0) / 100, pa = (st.fpts_against || 0) + (st.fpts_against_decimal || 0) / 100;
-      a.w += st.wins; a.l += st.losses; a.t += t; a.pf += pf; a.pa += pa;
-      if (st.wins + st.losses + t > 0) a.seasons++;
-      if (ids.has(r.roster_id)) a.po++;
-      return {uid: r.owner_id, w: st.wins, l: st.losses, t, pf, pa};
-    }).sort((a, b) => b.w - a.w || b.pf - a.pf);
-    const fin = done ? s.bracket.find(m => m.p === 1) : null;
-    let champ = null, runner = null;
-    if (fin && fin.w) {
-      champ = owner[fin.w]; runner = owner[fin.l];
-      if (champ) { A(champ).titles++; A(champ).finals++; }
-      if (runner) A(runner).finals++;
-    }
-    champs.push({season, champ, runner, top: rows[0]?.uid});
-    bySeason.push({season, rows, champ});
-    const start = L.settings?.playoff_week_start || 15;
-    s.weeks.forEach((wk, i) => {
-      if (i + 1 >= start) return;
-      const g = {};
-      (wk || []).forEach(m => m.matchup_id != null && (g[m.matchup_id] ??= []).push(m));
-      Object.values(g).forEach(p => {
-        if (p.length !== 2) return;
-        const [a, b] = p, pa = a.points || 0, pb = b.points || 0;
-        const ua = owner[a.roster_id], ub = owner[b.roster_id];
-        if ((!pa && !pb) || !ua || !ub) return;
-        scores.push([pa, ua, season, i + 1], [pb, ub, season, i + 1]);
-        if (pa === pb) return;
-        const [w, l] = pa > pb ? [ua, ub] : [ub, ua];
-        ((h2h[w] ??= {})[l] ??= [0, 0])[0]++;
-        ((h2h[l] ??= {})[w] ??= [0, 0])[1]++;
+      let loaded = null,
+        requestVersion = 0;
+      let playerNames = null;
+      function view(mode) {
+        const { sl, espn, isDefault } = loaded;
+        const seasons =
+          mode === "sleeper"
+            ? sl
+            : mode === "espn"
+              ? espn
+              : [...sl, ...espn].sort((a, b) =>
+                  String(a.league.season).localeCompare(
+                    String(b.league.season),
+                  ),
+                );
+        LeagueUI.mount(
+          $("out"),
+          seasons,
+          isDefault ? window.LEAGUE_NAMES || {} : {},
+        );
+        document
+          .querySelectorAll("#tabs button")
+          .forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
+      }
+
+      async function run(id) {
+        const version = ++requestVersion;
+        $("picker").innerHTML = "";
+        try {
+          const sl = await loadHistory(id, version),
+            isDefault = id === DEFAULT_LEAGUE;
+          if (version !== requestVersion) return;
+          if (!playerNames) {
+            try {
+              const players = await get("/players/nfl");
+              playerNames = Object.fromEntries(
+                Object.entries(players).map(([id, p]) => [
+                  id,
+                  {
+                    name:
+                      p.full_name ||
+                      `${p.first_name || ""} ${p.last_name || ""}`.trim() ||
+                      id,
+                  },
+                ]),
+              );
+            } catch (_) {
+              playerNames =
+                window.LEAGUE_SNAPSHOT?.find((s) => s.src === "Sleeper")
+                  ?.players || {};
+            }
+          }
+          if (version !== requestVersion) return;
+          sl.forEach((s) => {
+            s.src = "Sleeper";
+            s.players = playerNames;
+          });
+          const espn = isDefault ? window.ESPN_SEASONS || [] : [];
+          loaded = { sl, espn, isDefault };
+          if (espn.length)
+            $("tabs").innerHTML = [
+              ["combined", "Combined"],
+              ["sleeper", "Sleeper"],
+              ["espn", "ESPN"],
+            ]
+              .map(([m, t]) => `<button data-mode="${m}">${t}</button>`)
+              .join("");
+          view("combined");
+          setStatus(
+            `Loaded ${sl.length} Sleeper season(s)${espn.length ? ` + ${espn.length} ESPN season(s)` : ""}. Click a column header to sort.`,
+          );
+        } catch (e) {
+          if (version !== requestVersion) return;
+          setStatus(
+            `Couldn't refresh that league (${e.message}). ${loaded ? "The saved dashboard is still available." : "Check the ID and try again."}`,
+          );
+        }
+      }
+
+      async function byUsername(name) {
+        try {
+          const u = await get(`/user/${encodeURIComponent(name)}`);
+          const y = new Date().getFullYear();
+          const lists = await Promise.all(
+            [y, y - 1].map((yr) =>
+              get(`/user/${u.user_id}/leagues/nfl/${yr}`).catch(() => []),
+            ),
+          );
+          const leagues = lists.flat();
+          $("picker").innerHTML = leagues.length
+            ? leagues
+                .map(
+                  (l) =>
+                    `<button data-id="${esc(l.league_id)}">${esc(l.name)} (${esc(l.season)})</button>`,
+                )
+                .join("")
+            : "No leagues found for that user.";
+          setStatus(leagues.length ? "Pick a league:" : "");
+        } catch (e) {
+          setStatus(`Couldn't find that username (${e.message}).`);
+        }
+      }
+
+      $("go").onclick = () => {
+        const v = $("q").value.trim();
+        if (v) /^\d{10,}$/.test(v) ? run(v) : byUsername(v);
+      };
+      $("q").addEventListener(
+        "keydown",
+        (e) => e.key === "Enter" && $("go").click(),
+      );
+      $("reset").onclick = () => {
+        $("q").value = "";
+        run(DEFAULT_LEAGUE);
+      };
+      $("tabs").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (b) view(b.dataset.mode);
       });
-    });
-  }
-  return {names, all, champs, scores, h2h, bySeason};
-}
-
-function table(head, rows) {
-  const cell = c => Array.isArray(c) ? `<td data-v="${esc(c[1])}">${esc(c[0])}</td>` : `<td>${esc(c)}</td>`;
-  return `<div class="scroll"><table class="sortable"><thead><tr>${head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(cell).join('')}</tr>`).join('')}</tbody></table></div>`;
-}
-
-function render(D) {
-  const n = u => D.names[u] || 'Unknown', rec = (w, l, t) => `${w}-${l}${t ? '-' + t : ''}`;
-  const rows = Object.entries(D.all).map(([u, a]) => {
-    const gp = a.w + a.l + a.t, wp = gp ? (a.w + a.t / 2) / gp : 0;
-    return [n(u), a.seasons, [rec(a.w, a.l, a.t), a.w], [(wp * 100).toFixed(1) + '%', wp],
-      gp ? (a.pf / gp).toFixed(2) : '0', gp ? (a.pa / gp).toFixed(2) : '0',
-      [a.pf.toFixed(1), a.pf], [a.pa.toFixed(1), a.pa], a.po, a.titles, a.finals, wp];
-  }).sort((a, b) => b[11] - a[11]).map(r => r.slice(0, 11));
-  let h = '<h2>All-time standings</h2>' + table(['Manager','Seasons','Record','Win %','PF/game','PA/game','Points for','Points against','Playoffs','Titles','Finals'], rows);
-  h += '<h2>Champions by season</h2>' + table(['Season','Champion','Runner-up','Best regular-season record'],
-    D.champs.slice().reverse().map(c => [c.season, c.champ ? n(c.champ) : '-', c.runner ? n(c.runner) : '-', c.top ? n(c.top) : '-']));
-  const top = D.scores.slice().sort((a, b) => b[0] - a[0]).slice(0, 10);
-  h += '<h2>Highest single-week scores</h2>' + table(['Points','Manager','Season','Week'], top.map(s => [s[0].toFixed(2), n(s[1]), s[2], 'Week ' + s[3]]));
-  const us = Object.keys(D.all).sort((a, b) => n(a).localeCompare(n(b)));
-  h += '<h2>Head-to-head (regular season)</h2><p class="sub">Row manager\'s record vs the column manager.</p>' +
-    table(['Manager', ...us.map(n)], us.map(a => [n(a), ...us.map(b => { const r = D.h2h[a]?.[b]; return a === b ? '-' : r ? `${r[0]}-${r[1]}` : ''; })]));
-  h += '<h2>Season standings</h2>' + D.bySeason.slice().reverse().map(s =>
-    `<details><summary>${esc(s.season)}</summary>${table(['#','Manager','Record','PF','PA'],
-      s.rows.map((r, i) => [i + 1, n(r.uid) + (r.uid === s.champ ? ' 🏆' : ''), rec(r.w, r.l, r.t), r.pf.toFixed(1), r.pa.toFixed(1)]))}</details>`).join('');
-  return h;
-}
-
-let loaded = null;
-function view(mode) {
-  const {sl, espn, isDefault} = loaded;
-  const seasons = mode === 'sleeper' ? sl : mode === 'espn' ? espn
-    : [...sl, ...espn].sort((a, b) => String(a.league.season).localeCompare(String(b.league.season)));
-  const D = analyze(seasons);
-  if (isDefault && window.LEAGUE_NAMES) Object.assign(D.names, window.LEAGUE_NAMES);
-  $('out').innerHTML = render(D);
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
-}
-
-async function run(id) {
-  $('picker').innerHTML = ''; $('tabs').innerHTML = '';
-  try {
-    const sl = await loadHistory(id), isDefault = id === DEFAULT_LEAGUE;
-    sl.forEach(s => s.src = 'Sleeper');
-    const espn = isDefault ? (window.ESPN_SEASONS || []) : [];
-    loaded = {sl, espn, isDefault};
-    if (espn.length) $('tabs').innerHTML = [['combined', 'Combined'], ['sleeper', 'Sleeper'], ['espn', 'ESPN']]
-      .map(([m, t]) => `<button data-mode="${m}">${t}</button>`).join('');
-    view('combined');
-    setStatus(`Loaded ${sl.length} Sleeper season(s)${espn.length ? ` + ${espn.length} ESPN season(s)` : ''}. Click a column header to sort.`);
-  } catch (e) {
-    setStatus(`Couldn't load that league (${e.message}). Check the ID and try again.`);
-  }
-}
-
-async function byUsername(name) {
-  try {
-    const u = await get(`/user/${encodeURIComponent(name)}`);
-    const y = new Date().getFullYear();
-    const lists = await Promise.all([y, y - 1].map(yr => get(`/user/${u.user_id}/leagues/nfl/${yr}`).catch(() => [])));
-    const leagues = lists.flat();
-    $('picker').innerHTML = leagues.length ? leagues.map(l => `<button data-id="${esc(l.league_id)}">${esc(l.name)} (${esc(l.season)})</button>`).join('') : 'No leagues found for that user.';
-    setStatus(leagues.length ? 'Pick a league:' : '');
-  } catch (e) { setStatus(`Couldn't find that username (${e.message}).`); }
-}
-
-$('go').onclick = () => { const v = $('q').value.trim(); if (v) /^\d{10,}$/.test(v) ? run(v) : byUsername(v); };
-$('q').addEventListener('keydown', e => e.key === 'Enter' && $('go').click());
-$('reset').onclick = () => { $('q').value = ''; run(DEFAULT_LEAGUE); };
-$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) view(b.dataset.mode); });
-$('picker').addEventListener('click', e => { const b = e.target.closest('button'); if (b) run(b.dataset.id); });
-document.addEventListener('click', e => {
-  const th = e.target.closest('th');
-  if (!th || !th.closest('table.sortable')) return;
-  const tb = th.closest('table').tBodies[0], ths = [...th.parentNode.children], i = ths.indexOf(th);
-  const asc = th.dataset.asc !== '1';
-  ths.forEach(t => { t.classList.remove('asc', 'desc'); delete t.dataset.asc; });
-  th.dataset.asc = asc ? '1' : '0'; th.classList.add(asc ? 'asc' : 'desc');
-  [...tb.rows].sort((a, b) => {
-    const x = a.cells[i].dataset.v ?? a.cells[i].textContent, y = b.cells[i].dataset.v ?? b.cells[i].textContent;
-    const nx = parseFloat(x), ny = parseFloat(y);
-    const c = (!isNaN(nx) && !isNaN(ny)) ? nx - ny : x.localeCompare(y);
-    return asc ? c : -c;
-  }).forEach(r => tb.appendChild(r));
-});
-run(DEFAULT_LEAGUE);
-</script></body></html>
+      $("picker").addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (b) run(b.dataset.id);
+      });
+      if (window.LEAGUE_SNAPSHOT?.length) {
+        loaded = {
+          sl: window.LEAGUE_SNAPSHOT.filter((s) => s.src === "Sleeper"),
+          espn: window.LEAGUE_SNAPSHOT.filter((s) => s.src === "ESPN"),
+          isDefault: true,
+        };
+        $("tabs").innerHTML = [
+          ["combined", "Combined"],
+          ["sleeper", "Sleeper"],
+          ["espn", "ESPN"],
+        ]
+          .map(([m, t]) => `<button data-mode="${m}">${t}</button>`)
+          .join("");
+        view("combined");
+        setStatus(
+          "Showing the saved league snapshot while refreshing live data…",
+        );
+      }
+      run(DEFAULT_LEAGUE);
+    </script>
+  </body>
+</html>
