@@ -608,6 +608,27 @@ def export_espn_js(all_seasons, shown, canon):
     Path("espn_league.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
 
 
+def export_player_names_js(all_seasons):
+    """Write player_names.js: {player_id: [name, position, team]} for every player who
+    appeared on a roster in the Sleeper league, so index.html doesn't need Sleeper's
+    full multi-megabyte player list."""
+    pdb = load(Path("data") / "players.json", {}) or {}
+    ids = set()
+    for d in all_seasons:
+        if d["src"] != "Sleeper":
+            continue
+        for week in range(1, 19):
+            for m in load(d["folder"] / f"matchups_week_{week}.json", []) or []:
+                ids.update(m.get("players") or [])
+    out = {}
+    for pid in ids:
+        p = pdb.get(pid, {})
+        name = p.get("full_name") or f"{p.get('first_name', '')} {p.get('last_name', '')}".strip() or pid
+        out[pid] = [name, p.get("position") or "", p.get("team") or ""]
+    js = "window.PLAYER_NAMES = " + json.dumps(out, separators=(",", ":")) + ";\n"
+    Path("player_names.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
+
+
 def main():
     all_seasons = load_all()
     if not all_seasons:
@@ -634,6 +655,9 @@ def main():
     if "ESPN" in srcs:
         export_espn_js(all_seasons, shown, canon)
         print("Wrote espn_league.js")
+    if "Sleeper" in srcs:
+        export_player_names_js(all_seasons)
+        print("Wrote player_names.js")
     if "Sleeper" in srcs:
         Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")
         print("Wrote players.html")

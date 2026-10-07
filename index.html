@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>League Wrapped!</title>
+<title>League Wrapped</title>
 <style>
   :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --line:#e2e2e2; --head:#f4f4f4; }
   @media (prefers-color-scheme: dark) { :root { --bg:#15171a; --fg:#e8e8e8; --muted:#9aa0a6; --line:#2c2f33; --head:#1f2226; } }
@@ -17,16 +17,29 @@
   th.asc::after { content:' ▲'; opacity:1; } th.desc::after { content:' ▼'; opacity:1; }
   button.on { background:var(--fg); color:var(--bg); }
   summary { cursor:pointer; margin:8px 0; font-weight:600; }
+  #pages { margin:18px 0 4px; border-bottom:1px solid var(--line); padding-bottom:10px; }
+  #pages button { font-size:15px; font-weight:600; }
+  #plist button { display:block; width:100%; max-width:420px; text-align:left; margin:0; border-radius:0; border-top:0; }
+  #plist button:first-child { border-top:1px solid var(--line); }
+  small { color:var(--muted); font-weight:normal; }
 </style></head><body>
-<h1>League Wrapped!</h1>
+<h1>League Wrapped</h1>
 <p class="sub">Enter a Sleeper league ID (or your Sleeper username to pick a league) to see its full history.</p>
 <input id="q" placeholder="League ID or username" autocomplete="off">
 <button id="go">Load league</button><button id="reset">Our league</button>
 <div id="picker"></div>
+<div id="pages"><button data-page="standings" class="on">Standings</button><button data-page="players">Players</button></div>
 <div id="tabs"></div>
 <p id="status"></p>
 <div id="out"></div>
+<div id="playersView" hidden>
+  <p class="sub" id="pstatus">Load a league first.</p>
+  <input id="pq" placeholder="Search a player, e.g. Mahomes" autocomplete="off">
+  <div id="plist"></div>
+  <div id="pout"></div>
+</div>
 <script src="espn_league.js"></script>
+<script src="player_names.js"></script>
 <script>
 const DEFAULT_LEAGUE = "1381121078079795200";
 const API = "https://api.sleeper.app/v1";
@@ -40,12 +53,13 @@ async function loadHistory(id) {
   while (id && id !== "0") {
     setStatus(`Loading league ${id}… (${seasons.length} season(s) so far)`);
     const league = await get(`/league/${id}`);
-    const [users, rosters, bracket, weeks] = await Promise.all([
+    const [users, rosters, bracket, losers, weeks] = await Promise.all([
       get(`/league/${id}/users`), get(`/league/${id}/rosters`),
       get(`/league/${id}/winners_bracket`).catch(() => []),
+      get(`/league/${id}/losers_bracket`).catch(() => []),
       Promise.all(Array.from({length: 18}, (_, i) => get(`/league/${id}/matchups/${i + 1}`).catch(() => []))),
     ]);
-    seasons.push({league, users, rosters, bracket: bracket || [], weeks});
+    seasons.push({league, users, rosters, bracket: bracket || [], losers: losers || [], weeks});
     id = league.previous_league_id;
   }
   return seasons.reverse();
@@ -53,7 +67,8 @@ async function loadHistory(id) {
 
 function analyze(seasons) {
   const many = new Set(seasons.map(s => s.src)).size > 1;
-  const names = {}, all = {}, champs = [], scores = [], h2h = {}, bySeason = [];
+  const names = {}, all = {}, champs = [], scores = [], h2h = {reg: {}, po: {}, con: {}}, bySeason = [];
+  const addH = (k, w, l) => { ((h2h[k][w] ??= {})[l] ??= [0, 0])[0]++; ((h2h[k][l] ??= {})[w] ??= [0, 0])[1]++; };
   const A = u => all[u] ??= {w:0, l:0, t:0, pf:0, pa:0, seasons:0, po:0, titles:0, finals:0};
   for (const s of seasons) {
     const L = s.league, season = many ? `${L.season} (${s.src})` : L.season, owner = {};
@@ -95,10 +110,28 @@ function analyze(seasons) {
         scores.push([pa, ua, season, i + 1], [pb, ub, season, i + 1]);
         if (pa === pb) return;
         const [w, l] = pa > pb ? [ua, ub] : [ub, ua];
-        ((h2h[w] ??= {})[l] ??= [0, 0])[0]++;
-        ((h2h[l] ??= {})[w] ??= [0, 0])[1]++;
+        addH('reg', w, l);
       });
     });
+    // Playoff and consolation games (head-to-head only)
+    if (s.src === 'ESPN') {
+      s.weeks.forEach((wk, i) => {
+        if (i + 1 < start) return;
+        const g = {};
+        (wk || []).forEach(m => m.matchup_id != null && m.bracket && m.bracket !== 'NONE' && (g[m.matchup_id] ??= []).push(m));
+        Object.values(g).forEach(p => {
+          if (p.length !== 2) return;
+          const [a, b] = p, pa = a.points || 0, pb = b.points || 0;
+          if (pa === pb) return;
+          const [w, l] = pa > pb ? [a.roster_id, b.roster_id] : [b.roster_id, a.roster_id];
+          if (owner[w] && owner[l]) addH(a.bracket === 'WINNERS_BRACKET' ? 'po' : 'con', owner[w], owner[l]);
+        });
+      });
+    } else {
+      [['po', s.bracket], ['con', s.losers || []]].forEach(([k, br]) => br.forEach(m => {
+        if (Number.isInteger(m.w) && Number.isInteger(m.l) && owner[m.w] && owner[m.l]) addH(k, owner[m.w], owner[m.l]);
+      }));
+    }
   }
   return {names, all, champs, scores, h2h, bySeason};
 }
@@ -122,15 +155,119 @@ function render(D) {
   const top = D.scores.slice().sort((a, b) => b[0] - a[0]).slice(0, 10);
   h += '<h2>Highest single-week scores</h2>' + table(['Points','Manager','Season','Week'], top.map(s => [s[0].toFixed(2), n(s[1]), s[2], 'Week ' + s[3]]));
   const us = Object.keys(D.all).sort((a, b) => n(a).localeCompare(n(b)));
-  h += '<h2>Head-to-head (regular season)</h2><p class="sub">Row manager\'s record vs the column manager.</p>' +
-    table(['Manager', ...us.map(n)], us.map(a => [n(a), ...us.map(b => { const r = D.h2h[a]?.[b]; return a === b ? '-' : r ? `${r[0]}-${r[1]}` : ''; })]));
+  const kinds = [['reg', 'Regular season'], ['po', 'Playoffs'], ['con', 'Consolation'], ['all', 'All games']];
+  const hcell = (a, b, k) => {
+    if (a === b) return '-';
+    let w = 0, l = 0;
+    (k === 'all' ? ['reg', 'po', 'con'] : [k]).forEach(x => { const r = D.h2h[x][a]?.[b]; if (r) { w += r[0]; l += r[1]; } });
+    return (w || l) ? `${w}-${l}` : '';
+  };
+  h += '<h2>Head-to-head</h2><p class="sub">Row manager\'s record vs the column manager.</p><div>' +
+    kinds.map(([k, t]) => `<button class="mode${k === 'reg' ? ' on' : ''}" data-m="${k}">${t}</button>`).join('') + '</div>' +
+    kinds.map(([k]) => `<div class="h2h" data-m="${k}"${k === 'reg' ? '' : ' hidden'}>${table(['Manager', ...us.map(n)], us.map(a => [n(a), ...us.map(b => hcell(a, b, k))]))}</div>`).join('');
   h += '<h2>Season standings</h2>' + D.bySeason.slice().reverse().map(s =>
     `<details><summary>${esc(s.season)}</summary>${table(['#','Manager','Record','PF','PA'],
       s.rows.map((r, i) => [i + 1, n(r.uid) + (r.uid === s.champ ? ' 🏆' : ''), rec(r.w, r.l, r.t), r.pf.toFixed(1), r.pa.toFixed(1)]))}</details>`).join('');
   return h;
 }
 
-let loaded = null;
+let loaded = null, page = 'standings', players = null, nflDb = null, loadToken = 0;
+
+function managerNames() {
+  const names = {};
+  loaded.sl.forEach(s => s.users.forEach(u => names[u.user_id] = u.display_name));
+  if (loaded.isDefault && window.LEAGUE_NAMES) Object.assign(names, window.LEAGUE_NAMES);
+  return names;
+}
+
+// Per-player history from Sleeper weekly rosters
+function buildPlayerStats(seasons, names) {
+  const stats = {};
+  for (const s of seasons) {
+    const L = s.league, done = L.status === 'complete', owner = {};
+    s.rosters.forEach(r => owner[r.roster_id] = r.owner_id);
+    const fin = done ? s.bracket.find(m => m.p === 1) : null, champ = fin ? fin.w : null;
+    const po = new Set();
+    if (done) s.bracket.forEach(m => ['t1','t2','w','l'].forEach(k => Number.isInteger(m[k]) && po.add(m[k])));
+    const start = L.settings?.playoff_week_start || 15;
+    s.weeks.forEach((wk, i) => {
+      const g = {};
+      (wk || []).forEach(m => m.matchup_id != null && (g[m.matchup_id] ??= []).push(m));
+      Object.values(g).forEach(p => {
+        if (p.length !== 2) return;
+        for (const [me, opp] of [[p[0], p[1]], [p[1], p[0]]]) {
+          const mine = me.points || 0, theirs = opp.points || 0;
+          if (!mine && !theirs) continue;  // week not played yet
+          const res = i + 1 < start ? (mine > theirs ? 'w' : mine < theirs ? 'l' : 't') : null;
+          const starters = new Set(me.starters || []), pp = me.players_points || {};
+          for (const pid of me.players || []) {
+            const x = ((stats[pid] ??= {})[`${L.season}|${me.roster_id}`] ??= {
+              season: L.season, m: names[owner[me.roster_id]] || 'Unknown', wk: 0, st: 0, pts: 0,
+              w: 0, l: 0, t: 0, xw: 0, xl: 0, xt: 0, po: po.has(me.roster_id), ch: me.roster_id === champ});
+            x.wk++;
+            if (res) x[res]++;
+            if (starters.has(pid)) { x.st++; x.pts += pp[pid] || 0; if (res) x['x' + res]++; }
+          }
+        }
+      });
+    });
+  }
+  const rec = (w, l, t) => `${w}-${l}${t ? '-' + t : ''}`;
+  const out = {};
+  for (const [pid, by] of Object.entries(stats))
+    out[pid] = Object.values(by).sort((a, b) => String(a.season).localeCompare(String(b.season))).map(x =>
+      [x.season, x.m, rec(x.w, x.l, x.t), rec(x.xw, x.xl, x.xt), x.wk, x.st,
+       x.st ? [(x.pts / x.st).toFixed(1), x.pts / x.st] : ['–', -1], x.po ? '✔' : '', x.ch ? '🏆' : '']);
+  return out;
+}
+
+async function preparePlayers() {
+  if (!loaded || players) return;
+  const token = loadToken;
+  const stats = buildPlayerStats(loaded.sl, managerNames());
+  const known = (loaded.isDefault && window.PLAYER_NAMES) || {};
+  let db = {};
+  if (Object.keys(stats).some(pid => !known[pid])) {
+    $('pstatus').textContent = 'Loading player names (first time only, can take a few seconds)…';
+    try { nflDb ??= await get('/players/nfl'); } catch (e) { nflDb = null; }
+    db = nflDb || {};
+  }
+  if (token !== loadToken) return;  // a different league was loaded meanwhile
+  players = Object.entries(stats).map(([pid, rows]) => {
+    const k = known[pid], p = db[pid] || {};
+    const name = k ? k[0] : (p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || pid);
+    return [name, k ? k[1] : (p.position || ''), k ? k[2] : (p.team || ''), rows];
+  }).sort((a, b) => a[0].localeCompare(b[0]));
+  $('pstatus').textContent = `${players.length} players who've been on a roster in this league.` +
+    (loaded.espn.length ? ' Sleeper seasons only; ESPN lineups aren\'t included yet.' : '');
+  searchPlayers();
+}
+
+function searchPlayers() {
+  const t = $('pq').value.trim().toLowerCase();
+  $('plist').innerHTML = '';
+  if (!players || t.length < 2) return;
+  const hits = [];
+  for (let i = 0; i < players.length && hits.length < 10; i++)
+    if (players[i][0].toLowerCase().includes(t)) hits.push(i);
+  $('plist').innerHTML = hits.map(i => `<button data-i="${i}">${esc(players[i][0])}${players[i][1] ? ' · ' + esc(players[i][1]) : ''}</button>`).join('');
+}
+
+function showPlayer(i) {
+  const [name, pos, tm, rows] = players[i];
+  $('pq').value = name; $('plist').innerHTML = '';
+  $('pout').innerHTML = `<h2>${esc(name)} <small>${esc(pos)} ${esc(tm)}</small></h2>` +
+    table(['Season','Manager','Record on roster','Record when started','Weeks rostered','Weeks started','Avg PPG','Playoffs','Champion'], rows);
+}
+
+function showPage(p) {
+  page = p;
+  document.querySelectorAll('#pages button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
+  $('out').hidden = $('tabs').hidden = p !== 'standings';
+  $('playersView').hidden = p !== 'players';
+  if (p === 'players') preparePlayers();
+}
+
 function view(mode) {
   const {sl, espn, isDefault} = loaded;
   const seasons = mode === 'sleeper' ? sl : mode === 'espn' ? espn
@@ -143,6 +280,8 @@ function view(mode) {
 
 async function run(id) {
   $('picker').innerHTML = ''; $('tabs').innerHTML = '';
+  players = null; loadToken++; $('pout').innerHTML = ''; $('plist').innerHTML = '';
+  $('pstatus').textContent = 'Loading…';
   try {
     const sl = await loadHistory(id), isDefault = id === DEFAULT_LEAGUE;
     sl.forEach(s => s.src = 'Sleeper');
@@ -152,6 +291,7 @@ async function run(id) {
       .map(([m, t]) => `<button data-mode="${m}">${t}</button>`).join('');
     view('combined');
     setStatus(`Loaded ${sl.length} Sleeper season(s)${espn.length ? ` + ${espn.length} ESPN season(s)` : ''}. Click a column header to sort.`);
+    if (page === 'players') preparePlayers();
   } catch (e) {
     setStatus(`Couldn't load that league (${e.message}). Check the ID and try again.`);
   }
@@ -172,6 +312,15 @@ $('go').onclick = () => { const v = $('q').value.trim(); if (v) /^\d{10,}$/.test
 $('q').addEventListener('keydown', e => e.key === 'Enter' && $('go').click());
 $('reset').onclick = () => { $('q').value = ''; run(DEFAULT_LEAGUE); };
 $('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) view(b.dataset.mode); });
+$('pages').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showPage(b.dataset.page); });
+$('pq').addEventListener('input', searchPlayers);
+$('plist').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showPlayer(+b.dataset.i); });
+$('out').addEventListener('click', e => {
+  const b = e.target.closest('button.mode');
+  if (!b) return;
+  $('out').querySelectorAll('button.mode').forEach(x => x.classList.toggle('on', x === b));
+  $('out').querySelectorAll('.h2h').forEach(g => { g.hidden = g.dataset.m !== b.dataset.m; });
+});
 $('picker').addEventListener('click', e => { const b = e.target.closest('button'); if (b) run(b.dataset.id); });
 document.addEventListener('click', e => {
   const th = e.target.closest('th');
