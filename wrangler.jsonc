@@ -1,11 +1,17 @@
 // Cloudflare settings for the League Wrapped site.
-// Cloudflare runs `npm run build` (set in the dashboard), which copies only the
-// public pages and scripts into dist/. This file publishes that folder and
-// nothing else, so scripts, raw data and .env files are never served.
+// `npm run build` copies only the public pages and scripts into dist/, and this
+// file publishes that folder and nothing else, so scripts, raw data and .env
+// files are never served. Wrangler runs the build itself (see "build"), so the
+// dashboard's build command doesn't matter.
 {
   "name": "league-wrapped",
   "compatibility_date": "2025-09-01",
+  "build": {
+    "command": "npm run build"
+  },
   "assets": {
     "directory": "./dist"
-  }
+  },
+  // Branch previews (e.g. pull requests) use `wrangler preview`, which needs this block.
+  "previews": {}
 }
