@@ -1,0 +1,18 @@
+{
+  "league_id": "1706900528",
+  "season": "2024",
+  "name": "diddy stem league",
+  "settings": {
+    "playoff_week_start": 15
+  },
+  "playoff_roster_ids": [
+    1,
+    7,
+    11,
+    12,
+    13,
+    14
+  ],
+  "previous_league_id": null,
+  "source": "espn"
+}

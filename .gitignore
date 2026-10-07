@@ -1,5 +1,4 @@
 data/
-data_espn/
 __pycache__/
 .DS_Store
 espn_secrets.json

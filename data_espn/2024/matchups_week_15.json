@@ -1,0 +1,74 @@
+[
+  {
+    "roster_id": 12,
+    "matchup_id": 1,
+    "points": 136.86,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 13,
+    "matchup_id": 2,
+    "points": 178.9,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 1,
+    "matchup_id": 2,
+    "points": 156.48,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 7,
+    "matchup_id": 3,
+    "points": 152.08,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 14,
+    "matchup_id": 3,
+    "points": 149.0,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 11,
+    "matchup_id": 4,
+    "points": 127.9,
+    "bracket": "WINNERS_BRACKET"
+  },
+  {
+    "roster_id": 10,
+    "matchup_id": 5,
+    "points": 112.72,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  },
+  {
+    "roster_id": 2,
+    "matchup_id": 5,
+    "points": 94.24,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  },
+  {
+    "roster_id": 3,
+    "matchup_id": 6,
+    "points": 110.14,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  },
+  {
+    "roster_id": 5,
+    "matchup_id": 6,
+    "points": 83.36,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  },
+  {
+    "roster_id": 4,
+    "matchup_id": 7,
+    "points": 102.58,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  },
+  {
+    "roster_id": 6,
+    "matchup_id": 7,
+    "points": 126.3,
+    "bracket": "LOSERS_CONSOLATION_LADDER"
+  }
+]

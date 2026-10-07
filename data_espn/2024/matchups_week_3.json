@@ -1,0 +1,74 @@
+[
+  {
+    "roster_id": 12,
+    "matchup_id": 1,
+    "points": 145.48,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 13,
+    "matchup_id": 1,
+    "points": 132.74,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 14,
+    "matchup_id": 2,
+    "points": 88.38,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 10,
+    "matchup_id": 2,
+    "points": 122.12,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 5,
+    "matchup_id": 3,
+    "points": 88.98,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 3,
+    "matchup_id": 3,
+    "points": 108.82,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 11,
+    "matchup_id": 4,
+    "points": 158.06,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 1,
+    "matchup_id": 4,
+    "points": 83.9,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 4,
+    "matchup_id": 5,
+    "points": 107.88,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 7,
+    "matchup_id": 5,
+    "points": 100.32,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 2,
+    "matchup_id": 6,
+    "points": 102.28,
+    "bracket": "NONE"
+  },
+  {
+    "roster_id": 6,
+    "matchup_id": 6,
+    "points": 90.38,
+    "bracket": "NONE"
+  }
+]
