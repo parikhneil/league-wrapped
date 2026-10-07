@@ -1,0 +1,11 @@
+// Cloudflare settings for the League Wrapped site.
+// Cloudflare runs `npm run build` (set in the dashboard), which copies only the
+// public pages and scripts into dist/. This file publishes that folder and
+// nothing else, so scripts, raw data and .env files are never served.
+{
+  "name": "league-wrapped",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}
