@@ -12,6 +12,357 @@
   table { border-collapse:collapse; width:100%; font-size:14px; } .scroll { overflow-x:auto; }
   th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } th { background:var(--head); }
   small { color:var(--muted); font-weight:normal; }
+</style><style>.league-guide {
+  --lg-bg: var(--bg, #f7f9fc);
+  --lg-fg: var(--fg, #182234);
+  --lg-muted: var(--muted, #59677e);
+  --lg-line: var(--line, #dce3ef);
+  --lg-head: var(--head, #eef3fa);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--lg-fg);
+}
+.league-guide *,
+.league-guide *::before,
+.league-guide *::after {
+  box-sizing: border-box;
+}
+.league-guide [hidden] {
+  display: none !important;
+}
+.league-guide button,
+.league-guide textarea,
+.league-guide a {
+  font: inherit;
+}
+.league-guide button {
+  margin: 0;
+  cursor: pointer;
+}
+.league-guide button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.league-guide button:focus-visible,
+.league-guide textarea:focus-visible,
+.league-guide a:focus-visible,
+.lg-transcript:focus-visible {
+  outline: 3px solid var(--accent, #2563eb);
+  outline-offset: 3px;
+}
+.lg-launcher {
+  position: fixed;
+  z-index: 900;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  border: 1px solid #243c90;
+  border-radius: 999px;
+  background: #2448b9;
+  color: #fff;
+  padding: 13px 20px;
+  font-weight: 650 !important;
+  box-shadow: 0 5px 20px #101d4433;
+}
+.lg-launcher:hover {
+  background: #1e3c9c;
+  border-color: #1e3c9c;
+}
+.lg-panel {
+  position: fixed;
+  z-index: 901;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 64px);
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100vw - 40px));
+  max-height: min(720px, calc(100vh - 116px));
+  max-height: min(720px, calc(100dvh - 116px));
+  background: var(--lg-bg);
+  border: 1px solid var(--lg-line);
+  border-radius: 20px;
+  box-shadow: 0 16px 64px #09152c38;
+  overflow: hidden;
+}
+.lg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 13px;
+  flex: 0 0 auto;
+  background: var(--lg-head);
+}
+.lg-eyebrow {
+  display: block;
+  color: var(--lg-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+}
+.league-guide .lg-title {
+  margin: 2px 0 0;
+  font-size: 23px;
+  line-height: 1.25;
+  letter-spacing: -0.6px;
+}
+.lg-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lg-reset,
+.lg-close {
+  border: 1px solid var(--lg-line);
+  border-radius: 8px;
+  background: var(--lg-bg);
+  color: var(--lg-fg);
+}
+.lg-reset {
+  padding: 7px 9px;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+.lg-close {
+  padding: 1px 8px;
+  font-size: 25px !important;
+  line-height: 1.3;
+}
+.lg-context {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 11px;
+  color: var(--lg-muted);
+  border-bottom: 1px solid var(--lg-line);
+  flex: 0 0 auto;
+}
+.lg-transcript {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  min-height: 0;
+  max-height: 380px;
+  flex: 1 1 auto;
+  scrollbar-width: thin;
+}
+.league-guide .lg-welcome h3 {
+  margin: 0 0 7px;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+.lg-welcome p {
+  margin: 0;
+  color: var(--lg-muted);
+  font-size: 13px;
+}
+.lg-prompts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+.lg-prompt {
+  border: 1px solid var(--lg-line);
+  border-radius: 10px;
+  background: var(--lg-head);
+  color: var(--lg-fg);
+  padding: 11px 10px;
+  text-align: left;
+  font-size: 12px !important;
+}
+.lg-message + .lg-message {
+  margin-top: 18px;
+}
+.lg-message {
+  min-width: 0;
+}
+.lg-message-label {
+  margin: 0 0 5px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--lg-muted);
+}
+.lg-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 13px;
+}
+.lg-user {
+  padding: 12px 14px;
+  background: var(--lg-head);
+  border: 1px solid var(--lg-line);
+  border-radius: 12px;
+}
+.lg-assistant {
+  padding: 0 2px;
+}
+.lg-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.league-guide .lg-source {
+  display: inline-block;
+  border: 1px solid var(--lg-line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  text-decoration: none;
+  background: var(--lg-head);
+  color: var(--accent, #2563eb);
+  font-size: 11px;
+}
+.lg-feedback {
+  flex: 0 0 auto;
+  padding: 0 20px;
+}
+.lg-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--lg-muted);
+}
+.lg-status:not(:empty) {
+  padding: 7px 0;
+}
+.lg-retry {
+  border: 1px solid var(--lg-line);
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: var(--lg-head);
+  color: var(--lg-fg);
+  font-size: 11px !important;
+  margin-bottom: 8px !important;
+}
+.lg-form {
+  padding: 12px 20px 0;
+  border-top: 1px solid var(--lg-line);
+  flex: 0 0 auto;
+}
+.lg-input-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.league-guide .lg-input {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 65px;
+  max-height: 140px;
+  border: 1px solid var(--lg-line);
+  border-radius: 10px;
+  background: var(--lg-bg);
+  color: var(--lg-fg);
+  padding: 10px 12px;
+  line-height: 1.45;
+  font-size: 13px;
+}
+.lg-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+}
+.lg-count {
+  color: var(--lg-muted);
+  font-size: 10px;
+}
+.lg-send {
+  background: #2448b9;
+  color: #fff;
+  border: 1px solid #2448b9;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+.lg-send:hover {
+  background: #1e3c9c;
+  border-color: #1e3c9c;
+}
+.lg-privacy {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 20px 14px;
+  color: var(--lg-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+@media (max-width: 520px) {
+  .lg-launcher {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 11px 16px;
+    font-size: 13px !important;
+  }
+  .lg-panel {
+    right: 12px;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 58px);
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 90px);
+    max-height: calc(100dvh - 90px);
+    border-radius: 16px;
+  }
+  .lg-header {
+    padding: 14px 16px 11px;
+  }
+  .lg-context {
+    padding: 8px 16px;
+  }
+  .lg-transcript {
+    padding: 16px;
+  }
+  .lg-feedback {
+    padding: 0 16px;
+  }
+  .lg-form {
+    padding: 10px 16px 0;
+  }
+  .league-guide .lg-input {
+    font-size: 16px;
+  }
+  .lg-privacy {
+    padding: 0 16px 12px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lg-launcher {
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+}
+@media (max-height: 520px) {
+  .lg-panel {
+    bottom: 10px;
+    max-height: calc(100dvh - 20px);
+  }
+  .lg-header {
+    padding-top: 10px;
+    padding-bottom: 9px;
+  }
+  .lg-eyebrow {
+    display: none;
+  }
+  .lg-context {
+    font-size: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .league-guide .lg-input {
+    min-height: 48px;
+    max-height: 70px;
+  }
+  .lg-privacy {
+    padding-bottom: 7px;
+  }
+}
 </style></head><body>
 <h1>Players</h1>
 <nav><a href="report.html">Combined</a> <a href="report_espn.html">ESPN</a> <a href="report_sleeper.html">Sleeper</a> <a href="players.html">Players</a></nav>
@@ -19,7 +370,7 @@
 <input id="q" placeholder="Search a player, e.g. Mahomes" autocomplete="off">
 <div id="list"></div><div id="out"></div>
 <script>
-const DATA = [["A.J. Brown", "WR", "NE", [["2025", "Alex", "3-11", "3-9", 16, 14, 14.9, 0, 0], ["2026", "Safwan", "2-2", "1-0", 4, 1, 5.6, 0, 0]]], ["Aaron Jones", "RB", "MIN", [["2025", "Ani", "7-3", "0-0", 10, 0, null, 1, 0], ["2025", "Koji", "0-1", "0-1", 1, 1, 11.1, 0, 0], ["2025", "Abhi", "2-1", "0-0", 5, 0, null, 0, 0], ["2026", "Shravan", "2-2", "1-2", 4, 3, 13.8, 0, 0]]], ["Aaron Rodgers", "QB", "PIT", [["2025", "Shravan", "1-0", "1-0", 1, 1, 24.6, 1, 0], ["2025", "Alex", "1-4", "0-1", 7, 2, 7.9, 0, 0]]], ["Adam Thielen", "WR", "", [["2025", "Sathkrith", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Adonai Mitchell", "WR", "NYJ", [["2025", "Rafael", "0-2", "0-1", 4, 3, 9.4, 0, 0], ["2026", "Winston", "2-1", "0-0", 3, 0, null, 0, 0]]], ["AJ Barner", "TE", "SEA", [["2025", "Shravan", "1-2", "0-1", 3, 1, 10.1, 1, 0], ["2025", "Mayank", "0-0", "0-0", 2, 0, null, 0, 0]]], ["Alec Pierce", "WR", "IND", [["2025", "Winston", "3-6", "1-4", 12, 7, 7.5, 0, 0], ["2026", "Winston", "2-2", "1-0", 4, 1, 2.1, 0, 0]]], ["Alvin Kamara", "RB", "NO", [["2025", "Mayank", "4-10", "3-8", 16, 11, 9.2, 0, 0], ["2026", "Shravan", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Amon-Ra St. Brown", "WR", "DET", [["2025", "Mayank", "4-10", "3-10", 16, 15, 17.2, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 22.8, 0, 0]]], ["Andrei Iosivas", "WR", "CIN", [["2025", "Safwan", "3-0", "1-0", 3, 1, 10.6, 1, 0]]], ["Antonio Williams", "WR", "WAS", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Koji", "1-0", "1-0", 1, 1, 5.1, 0, 0]]], ["Arizona Cardinals", "DEF", "ARI", [["2025", "Abhi", "2-1", "2-1", 3, 3, 8.7, 0, 0]]], ["Ashton Jeanty", "RB", "LV", [["2025", "Ekaansh", "11-3", "11-2", 16, 15, 15.0, 1, 1], ["2026", "Safwan", "2-2", "2-2", 4, 4, 18.5, 0, 0]]], ["Atlanta Falcons", "DEF", "ATL", [["2025", "Neil", "0-1", "0-1", 1, 1, 2.0, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 0.0, 1, 0], ["2025", "Abhi", "1-2", "1-2", 3, 3, 7.3, 0, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 5.0, 0, 0]]], ["Audric Estime", "RB", "MIN", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Austin Ekeler", "RB", "WAS", [["2025", "Koji", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Baker Mayfield", "QB", "TB", [["2025", "Safwan", "9-5", "7-5", 17, 13, 17.2, 1, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Baltimore Ravens", "DEF", "BAL", [["2025", "Alex", "0-3", "0-3", 3, 3, 3.3, 0, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, -2.0, 1, 0], ["2025", "Shravan", "3-2", "3-1", 5, 4, 12.0, 1, 0], ["2025", "Neil", "0-1", "0-1", 3, 3, 5.0, 1, 0], ["2026", "Abhi", "0-2", "0-2", 2, 2, 5.0, 0, 0], ["2026", "Ani", "1-0", "1-0", 1, 1, 7.0, 0, 0]]], ["Bhayshul Tuten", "RB", "JAX", [["2025", "Winston", "4-9", "0-0", 16, 0, null, 0, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 13.0, 0, 0]]], ["Bijan Robinson", "RB", "ATL", [["2025", "Rafael", "6-8", "6-7", 16, 15, 21.6, 0, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 26.3, 0, 0]]], ["Blake Corum", "RB", "LAR", [["2025", "Koji", "3-2", "0-0", 5, 0, null, 0, 0], ["2025", "Ekaansh", "1-0", "0-0", 3, 0, null, 1, 1], ["2026", "Rafael", "3-1", "1-0", 4, 1, 3.1, 0, 0]]], ["Bo Nix", "QB", "DEN", [["2025", "Sathkrith", "8-6", "6-6", 17, 12, 18.5, 1, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Neil", "1-1", "1-1", 2, 2, 18.9, 0, 0]]], ["Braelon Allen", "RB", "NYJ", [["2025", "Sathkrith", "2-3", "0-0", 5, 0, null, 1, 0], ["2026", "Ekaansh", "0-1", "0-1", 1, 1, 8.7, 0, 0]]], ["Brandon Aiyuk", "WR", "SF", [["2025", "Ekaansh", "11-3", "0-0", 14, 0, null, 1, 1]]], ["Brandon Aubrey", "K", "DAL", [["2025", "Safwan", "9-5", "9-4", 17, 16, 11.2, 1, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 10.0, 0, 0]]], ["Brandon McManus", "K", "", [["2025", "Ani", "3-0", "3-0", 3, 3, 4.7, 1, 0]]], ["Brashard Smith", "RB", "KC", [["2025", "Sathkrith", "2-0", "1-0", 2, 1, 0.7, 1, 0]]], ["Breece Hall", "RB", "NYJ", [["2025", "Sathkrith", "8-6", "7-6", 17, 15, 13.3, 1, 0], ["2026", "Neil", "2-2", "1-2", 4, 3, 14.2, 0, 0]]], ["Brenton Strange", "TE", "JAX", [["2025", "Rafael", "1-3", "0-1", 6, 1, 5.7, 0, 0], ["2025", "Neil", "0-1", "0-1", 1, 1, 3.2, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Brian Robinson", "RB", "ATL", [["2025", "Winston", "1-1", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "3-4", "0-0", 7, 0, null, 1, 0], ["2025", "Shravan", "3-2", "0-0", 7, 0, null, 1, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Brian Thomas", "WR", "JAX", [["2025", "Koji", "4-6", "2-4", 10, 6, 11.2, 0, 0], ["2025", "Ani", "1-3", "0-0", 6, 0, null, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 6.4, 0, 0]]], ["Brock Bowers", "TE", "LV", [["2025", "Safwan", "9-5", "8-2", 17, 12, 14.7, 1, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 24.1, 0, 0]]], ["Brock Purdy", "QB", "SF", [["2025", "Rafael", "6-6", "1-1", 12, 2, 15.0, 0, 0], ["2025", "Abhi", "0-0", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "2-1", 4, 3, 26.5, 0, 0]]], ["Bryce Young", "QB", "CAR", [["2026", "Safwan", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Bucky Irving", "RB", "TB", [["2025", "Koji", "4-7", "1-3", 11, 4, 18.0, 0, 0], ["2025", "Abhi", "2-1", "1-1", 5, 4, 11.9, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 11.8, 0, 0]]], ["Buffalo Bills", "DEF", "BUF", [["2025", "Ani", "2-2", "2-2", 4, 4, 9.0, 1, 0], ["2025", "Winston", "1-0", "1-0", 1, 1, 3.0, 0, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 8.0, 1, 0], ["2026", "Safwan", "0-1", "0-1", 1, 1, 5.0, 0, 0]]], ["C.J. Stroud", "QB", "HOU", [["2025", "Alex", "2-7", "0-0", 11, 1, 11.5, 0, 0]]], ["Cade Otton", "TE", "TB", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 8.0, 1, 0], ["2025", "Abhi", "0-1", "0-1", 1, 1, 4.8, 0, 0]]], ["Cairo Santos", "K", "CHI", [["2025", "Sathkrith", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Shravan", "4-3", "4-3", 9, 9, 9.3, 1, 0]]], ["Caleb Douglas", "WR", "MIA", [["2026", "Abhi", "0-3", "0-0", 3, 0, null, 0, 0]]], ["Caleb Williams", "QB", "CHI", [["2025", "Ekaansh", "11-3", "8-2", 16, 11, 19.0, 1, 1], ["2026", "Koji", "3-1", "2-0", 4, 2, 22.5, 0, 0]]], ["Calvin Austin", "WR", "NYG", [["2025", "Neil", "4-1", "2-0", 5, 2, 3.3, 1, 0]]], ["Calvin Ridley", "WR", "TEN", [["2025", "Koji", "1-3", "0-0", 4, 0, null, 0, 0], ["2025", "Shravan", "3-3", "0-0", 6, 0, null, 1, 0]]], ["Cam Little", "K", "JAX", [["2025", "Rafael", "3-1", "3-1", 4, 4, 9.2, 0, 0], ["2025", "Ani", "1-2", "1-2", 5, 5, 10.6, 1, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 9.8, 0, 0]]], ["Cam Skattebo", "RB", "NYG", [["2025", "Neil", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Safwan", "7-5", "2-3", 15, 5, 17.4, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 11.1, 0, 0]]], ["Cam Ward", "QB", "TEN", [["2025", "Safwan", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Cameron Dicker", "K", "LAC", [["2025", "Abhi", "7-7", "6-7", 16, 15, 10.7, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 6.5, 0, 0]]], ["Carnell Tate", "WR", "TEN", [["2026", "Koji", "3-1", "1-0", 4, 1, 21.5, 0, 0]]], ["Carolina Panthers", "DEF", "CAR", [["2025", "Alex", "2-5", "2-5", 7, 7, 7.7, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 7.0, 0, 0], ["2026", "Winston", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["Cedric Tillman", "WR", "NO", [["2025", "Ekaansh", "1-0", "0-0", 1, 0, null, 1, 1], ["2025", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["CeeDee Lamb", "WR", "DAL", [["2025", "Winston", "2-5", "1-3", 7, 4, 15.1, 0, 0], ["2025", "Neil", "6-1", "5-1", 9, 8, 15.3, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 28.0, 0, 0]]], ["Chase Brown", "RB", "CIN", [["2025", "Safwan", "9-5", "7-1", 17, 11, 17.8, 1, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 14.5, 0, 0]]], ["Chase McLaughlin", "K", "TB", [["2025", "Shravan", "1-0", "1-0", 1, 1, 4.0, 1, 0], ["2025", "Rafael", "2-3", "2-2", 5, 4, 10.0, 0, 0], ["2025", "Mayank", "1-4", "1-4", 7, 7, 6.7, 0, 0], ["2026", "Winston", "2-1", "2-1", 3, 3, 10.9, 0, 0]]], ["Chicago Bears", "DEF", "CHI", [["2025", "Neil", "1-0", "1-0", 1, 1, 14.0, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 6.0, 1, 0], ["2025", "Safwan", "1-0", "1-0", 2, 2, 10.0, 1, 0], ["2026", "Winston", "0-1", "0-1", 1, 1, 7.0, 0, 0]]], ["Chimere Dike", "WR", "TEN", [["2025", "Mayank", "2-5", "1-0", 9, 1, 16.4, 0, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Chris Boswell", "K", "PIT", [["2025", "Koji", "1-3", "1-3", 4, 4, 8.8, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 8.0, 0, 0], ["2025", "Rafael", "1-4", "1-4", 5, 5, 6.0, 0, 0]]], ["Chris Godwin", "WR", "TB", [["2025", "Shravan", "5-6", "0-2", 11, 2, 5.6, 1, 0], ["2025", "Abhi", "1-0", "1-0", 3, 1, 10.5, 0, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Chris Moore", "WR", "BAL", [["2025", "Neil", "1-0", "1-0", 1, 1, 7.9, 1, 0]]], ["Chris Olave", "WR", "NO", [["2025", "Koji", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Ani", "5-6", "5-5", 13, 12, 17.0, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 22.5, 0, 0]]], ["Chris Rodriguez", "RB", "JAX", [["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "2-3", "0-0", 8, 0, null, 0, 0], ["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Christian Kirk", "WR", "SF", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Christian McCaffrey", "RB", "SF", [["2025", "Shravan", "7-7", "6-7", 16, 15, 25.1, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 18.5, 0, 0]]], ["Christian Watson", "WR", "GB", [["2025", "Ekaansh", "4-1", "1-0", 7, 3, 10.8, 1, 1], ["2026", "Safwan", "2-2", "1-2", 4, 3, 14.8, 0, 0]]], ["Chuba Hubbard", "RB", "CAR", [["2025", "Alex", "3-11", "2-6", 16, 8, 9.7, 0, 0], ["2026", "Koji", "3-1", "1-0", 4, 1, 25.9, 0, 0]]], ["Cincinnati Bengals", "DEF", "CIN", [["2025", "Neil", "1-0", "1-0", 1, 1, -4.0, 1, 0], ["2026", "Shravan", "0-1", "0-1", 1, 1, 3.0, 0, 0]]], ["Cleveland Browns", "DEF", "CLE", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 26.0, 1, 0], ["2025", "Neil", "2-0", "1-0", 2, 1, 5.0, 1, 0], ["2025", "Shravan", "2-1", "1-0", 3, 1, 2.0, 1, 0], ["2026", "Neil", "1-0", "1-0", 1, 1, 9.0, 0, 0]]], ["Colby Parkinson", "TE", "LAR", [["2025", "Winston", "0-0", "0-0", 1, 0, null, 0, 0]]], ["Colston Loveland", "TE", "CHI", [["2025", "Koji", "1-5", "1-3", 9, 6, 9.7, 0, 0], ["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Arnav", "2-2", "0-2", 4, 2, 0.7, 0, 0]]], ["Cooper Kupp", "WR", "SEA", [["2025", "Alex", "3-11", "3-6", 16, 9, 6.8, 0, 0]]], ["Courtland Sutton", "WR", "DEN", [["2025", "Safwan", "9-5", "6-5", 17, 13, 12.8, 1, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["D'Andre Swift", "RB", "CHI", [["2025", "Ekaansh", "11-3", "6-3", 16, 11, 14.9, 1, 1], ["2026", "Winston", "2-2", "2-2", 4, 4, 15.9, 0, 0]]], ["Dak Prescott", "QB", "DAL", [["2025", "Abhi", "7-7", "6-6", 16, 14, 19.2, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 20.3, 0, 0]]], ["Dallas Cowboys", "DEF", "DAL", [["2025", "Mayank", "2-1", "2-0", 3, 2, 0.0, 0, 0], ["2025", "Sathkrith", "1-1", "1-1", 2, 2, 6.5, 1, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 1.0, 0, 0]]], ["Dallas Goedert", "TE", "PHI", [["2025", "Shravan", "1-0", "1-0", 1, 1, 11.4, 1, 0], ["2025", "Koji", "1-1", "1-0", 2, 1, 10.3, 0, 0], ["2025", "Ani", "5-6", "3-5", 13, 8, 10.1, 1, 0], ["2026", "Ekaansh", "1-3", "1-1", 4, 2, 12.5, 0, 0]]], ["Dalton Kincaid", "TE", "BUF", [["2025", "Mayank", "4-10", "3-2", 16, 5, 13.2, 0, 0], ["2026", "Shravan", "2-2", "1-2", 4, 3, 9.3, 0, 0]]], ["Dalton Schultz", "TE", "HOU", [["2025", "Koji", "0-1", "0-1", 1, 1, 4.4, 0, 0], ["2025", "Winston", "1-0", "1-0", 1, 1, 11.1, 0, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 5.2, 1, 0], ["2025", "Mayank", "0-0", "0-0", 2, 2, 9.7, 0, 0], ["2026", "Ani", "3-0", "3-0", 3, 3, 11.6, 0, 0]]], ["Daniel Jones", "QB", "IND", [["2025", "Abhi", "6-7", "1-1", 13, 2, 14.4, 0, 0]]], ["Darius Slayton", "WR", "IND", [["2025", "Koji", "1-0", "1-0", 1, 1, 4.1, 0, 0], ["2025", "Rafael", "1-1", "0-1", 2, 1, 12.9, 0, 0]]], ["Darnell Mooney", "WR", "NYG", [["2025", "Alex", "1-4", "0-0", 5, 0, null, 0, 0], ["2025", "Shravan", "0-1", "0-1", 1, 1, 2.1, 1, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-3", "0-2", 5, 3, 9.1, 0, 0]]], ["Darren Waller", "TE", "CAR", [["2025", "Koji", "3-5", "2-1", 11, 4, 14.1, 0, 0], ["2026", "Ekaansh", "0-1", "0-1", 1, 1, 6.6, 0, 0]]], ["Davante Adams", "WR", "LAR", [["2025", "Koji", "5-9", "5-8", 17, 14, 15.9, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 18.2, 0, 0]]], ["David Montgomery", "RB", "HOU", [["2025", "Rafael", "6-8", "4-6", 16, 12, 10.8, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 11.1, 0, 0]]], ["David Njoku", "TE", "LAC", [["2025", "Mayank", "2-7", "0-4", 9, 4, 2.3, 0, 0], ["2026", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["David Sills", "WR", "TB", [["2025", "Sathkrith", "1-1", "0-1", 3, 1, 0.0, 1, 0]]], ["Davis Mills", "QB", "HOU", [["2025", "Ani", "0-1", "0-1", 1, 1, 14.5, 1, 0]]], ["Dawson Knox", "TE", "BUF", [["2025", "Mayank", "0-1", "0-1", 1, 1, 8.9, 0, 0]]], ["De'Von Achane", "RB", "MIA", [["2025", "Abhi", "5-6", "5-6", 11, 11, 21.4, 0, 0], ["2025", "Koji", "1-2", "1-1", 6, 5, 17.6, 0, 0], ["2026", "Shravan", "2-1", "2-1", 3, 3, 8.2, 0, 0]]], ["De'Zhaun Stribling", "WR", "SF", [["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Deebo Samuel", "WR", "SF", [["2025", "Safwan", "9-5", "5-3", 17, 9, 13.5, 1, 0], ["2026", "Ani", "3-1", "2-0", 4, 2, 10.9, 0, 0]]], ["Denver Broncos", "DEF", "DEN", [["2025", "Ani", "8-6", "6-2", 14, 8, 8.9, 1, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 5.0, 1, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Denzel Boston", "WR", "CLE", [["2026", "Ani", "2-0", "1-0", 2, 1, 12.9, 0, 0]]], ["Derrick Henry", "RB", "BAL", [["2025", "Abhi", "1-3", "1-3", 4, 4, 12.5, 0, 0], ["2025", "Shravan", "5-5", "4-5", 12, 11, 15.6, 1, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 22.7, 0, 0]]], ["Detroit Lions", "DEF", "DET", [["2025", "Winston", "0-1", "0-1", 1, 1, 9.0, 0, 0], ["2025", "Rafael", "2-3", "1-3", 5, 4, 10.2, 0, 0], ["2025", "Ani", "0-1", "0-1", 3, 1, 4.0, 1, 0], ["2026", "Arnav", "1-2", "1-2", 3, 3, 6.0, 0, 0]]], ["Devaughn Vele", "WR", "NO", [["2025", "Winston", "0-1", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "1-0", 4, 1, 6.9, 0, 0]]], ["Devin Neal", "RB", "", [["2025", "Safwan", "2-0", "2-0", 4, 3, 11.8, 1, 0]]], ["Devin Singletary", "RB", "NYG", [["2025", "Sathkrith", "4-2", "0-0", 7, 0, null, 1, 0], ["2026", "Rafael", "1-1", "0-0", 2, 0, null, 0, 0]]], ["DeVonta Smith", "WR", "PHI", [["2025", "Safwan", "9-5", "5-2", 17, 10, 9.8, 1, 0], ["2026", "Koji", "3-1", "2-1", 4, 3, 16.2, 0, 0]]], ["DJ Moore", "WR", "BUF", [["2025", "Ekaansh", "11-3", "7-2", 14, 9, 9.1, 1, 1], ["2025", "Neil", "0-0", "0-0", 2, 0, null, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 9.1, 0, 0]]], ["DK Metcalf", "WR", "PIT", [["2025", "Abhi", "7-7", "6-7", 16, 15, 12.5, 0, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Dont'e Thornton", "WR", "LV", [["2025", "Ekaansh", "1-1", "0-0", 2, 0, null, 1, 1]]], ["Dontayvion Wicks", "WR", "PHI", [["2026", "Abhi", "0-3", "0-2", 3, 2, 5.0, 0, 0]]], ["Drake London", "WR", "ATL", [["2025", "Koji", "4-8", "3-7", 12, 10, 17.7, 0, 0], ["2025", "Sathkrith", "1-1", "0-0", 5, 2, 3.5, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 14.3, 0, 0]]], ["Drake Maye", "QB", "NE", [["2025", "Mayank", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Koji", "4-7", "4-5", 14, 11, 21.1, 0, 0], ["2026", "Mayank", "0-4", "0-3", 4, 3, 7.2, 0, 0]]], ["Dylan Sampson", "RB", "CLE", [["2025", "Rafael", "2-3", "0-0", 5, 0, null, 0, 0]]], ["Eddy Pineiro", "K", "SF", [["2025", "Koji", "2-4", "2-4", 6, 6, 9.2, 0, 0], ["2025", "Neil", "0-0", "0-0", 2, 2, 8.5, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 6.8, 0, 0]]], ["Elic Ayomanor", "WR", "TEN", [["2025", "Ani", "2-2", "1-0", 4, 1, 13.8, 1, 0], ["2025", "Safwan", "0-2", "0-0", 2, 0, null, 1, 0]]], ["Elijah Arroyo", "TE", "SEA", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Emanuel Wilson", "RB", "SEA", [["2025", "Ani", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Safwan", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "1-1", "0-1", 3, 1, 26.5, 0, 0], ["2026", "Mayank", "0-2", "0-2", 2, 2, 14.2, 0, 0]]], ["Emari Demercado", "RB", "DAL", [["2025", "Ekaansh", "2-0", "1-0", 2, 1, 6.1, 1, 1], ["2025", "Mayank", "0-1", "0-1", 1, 1, 4.0, 0, 0]]], ["Emeka Egbuka", "WR", "TB", [["2025", "Winston", "5-6", "5-4", 11, 9, 16.2, 0, 0], ["2025", "Koji", "1-2", "0-2", 6, 5, 6.0, 0, 0], ["2026", "Shravan", "2-2", "2-1", 4, 3, 8.3, 0, 0]]], ["Emmett Johnson", "RB", "KC", [["2026", "Shravan", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Evan Engram", "TE", "DEN", [["2025", "Neil", "4-1", "1-0", 5, 1, 5.1, 1, 0], ["2025", "Shravan", "0-1", "0-1", 1, 1, 7.6, 1, 0]]], ["Evan McPherson", "K", "CIN", [["2025", "Ekaansh", "3-1", "3-1", 4, 4, 5.0, 1, 1], ["2025", "Rafael", "0-1", "0-1", 2, 2, 2.0, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 8.0, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 12.5, 0, 0]]], ["Garrett Wilson", "WR", "NYJ", [["2025", "Shravan", "7-7", "2-5", 16, 7, 14.2, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 15.8, 0, 0]]], ["George Holani", "RB", "SEA", [["2026", "Sathkrith", "1-0", "0-0", 1, 0, null, 0, 0]]], ["George Kittle", "TE", "SF", [["2025", "Rafael", "6-8", "2-6", 16, 10, 15.4, 0, 0], ["2026", "Safwan", "2-2", "2-1", 4, 3, 15.5, 0, 0]]], ["George Pickens", "WR", "DAL", [["2025", "Ekaansh", "11-3", "10-3", 16, 15, 18.9, 1, 1], ["2026", "Arnav", "2-2", "2-2", 4, 4, 10.1, 0, 0]]], ["Green Bay Packers", "DEF", "GB", [["2025", "Abhi", "3-2", "2-2", 5, 4, 4.0, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 5.0, 0, 0], ["2025", "Rafael", "1-2", "1-2", 3, 3, 9.3, 0, 0], ["2026", "Rafael", "2-1", "2-1", 3, 3, 3.7, 0, 0]]], ["Harold Fannin", "TE", "CLE", [["2025", "Ani", "8-6", "2-1", 16, 5, 14.2, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 12.6, 0, 0]]], ["Harrison Butker", "K", "KC", [["2025", "Mayank", "3-6", "3-6", 9, 9, 7.4, 0, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 6.0, 1, 0], ["2025", "Neil", "2-1", "2-1", 3, 3, 7.7, 1, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 8.8, 0, 0]]], ["Harrison Mevis", "K", "LAR", [["2026", "Abhi", "0-2", "0-2", 2, 2, 2.0, 0, 0]]], ["Hassan Haskins", "RB", "", [["2025", "Alex", "1-2", "0-1", 3, 1, 3.3, 0, 0]]], ["Houston Texans", "DEF", "HOU", [["2025", "Winston", "0-1", "0-1", 1, 1, 14.0, 0, 0], ["2025", "Safwan", "0-1", "0-1", 1, 1, 5.0, 1, 0], ["2025", "Ekaansh", "5-1", "2-1", 8, 4, 12.5, 1, 1], ["2026", "Ani", "3-1", "1-1", 4, 2, 6.0, 0, 0]]], ["Hunter Henry", "TE", "NE", [["2025", "Rafael", "3-2", "3-1", 5, 4, 6.5, 0, 0], ["2025", "Shravan", "4-3", "2-2", 9, 4, 11.6, 1, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 6.3, 0, 0]]], ["Hunter Renfrow", "WR", "", [["2025", "Sathkrith", "1-1", "0-0", 2, 0, null, 1, 0]]], ["Indianapolis Colts", "DEF", "IND", [["2025", "Winston", "2-1", "2-1", 3, 3, 9.3, 0, 0], ["2025", "Sathkrith", "0-1", "0-1", 1, 1, 6.0, 1, 0]]], ["Isaac TeSlaa", "WR", "DET", [["2025", "Rafael", "0-1", "0-0", 3, 0, null, 0, 0]]], ["Isaiah Bond", "WR", "CLE", [["2025", "Rafael", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Isaiah Davis", "RB", "NYJ", [["2025", "Rafael", "0-1", "0-1", 1, 1, 6.3, 0, 0], ["2025", "Koji", "0-2", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Isaiah Likely", "TE", "NYG", [["2025", "Shravan", "0-0", "0-0", 2, 2, 0.0, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0], ["2026", "Shravan", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Isiah Pacheco", "RB", "DET", [["2025", "Ani", "3-0", "1-0", 3, 1, 4.8, 1, 0], ["2025", "Koji", "2-4", "1-1", 6, 2, 5.9, 0, 0], ["2025", "Shravan", "1-1", "0-0", 2, 0, null, 1, 0], ["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["J.J. McCarthy", "QB", "NYG", [["2025", "Ekaansh", "2-1", "0-0", 3, 0, null, 1, 1]]], ["J.K. Dobbins", "RB", "DEN", [["2025", "Shravan", "2-2", "1-1", 4, 2, 13.4, 1, 0], ["2025", "Abhi", "4-3", "4-1", 7, 5, 10.4, 0, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 3.6, 0, 0]]], ["Ja'Kobi Lane", "WR", "BAL", [["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Ja'Marr Chase", "WR", "CIN", [["2025", "Safwan", "9-5", "8-4", 17, 15, 19.3, 1, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 15.1, 0, 0]]], ["Jacksonville Jaguars", "DEF", "JAX", [["2025", "Rafael", "0-1", "0-1", 1, 1, 12.0, 0, 0], ["2025", "Abhi", "1-0", "1-0", 3, 3, 9.0, 0, 0], ["2025", "Winston", "0-2", "0-1", 2, 1, 16.0, 0, 0], ["2026", "Rafael", "1-0", "1-0", 1, 1, 15.0, 0, 0]]], ["Jacoby Brissett", "QB", "ARI", [["2025", "Winston", "0-3", "0-1", 6, 2, 15.1, 0, 0]]], ["Jacory Croskey-Merritt", "RB", "WAS", [["2025", "Shravan", "4-5", "1-1", 9, 2, 5.0, 1, 0], ["2025", "Safwan", "4-1", "1-1", 5, 2, 3.6, 1, 0], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Jadarian Price", "RB", "SEA", [["2026", "Rafael", "3-1", "2-1", 4, 3, 4.7, 0, 0]]], ["Jahmyr Gibbs", "RB", "DET", [["2025", "Ekaansh", "11-3", "11-2", 16, 15, 22.5, 1, 1], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 29.0, 0, 0]]], ["Jake Bates", "K", "DET", [["2025", "Ani", "4-3", "4-3", 7, 7, 7.7, 1, 0], ["2025", "Neil", "3-0", "3-0", 3, 3, 7.3, 1, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 6.0, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 10.0, 0, 0]]], ["Jake Browning", "QB", "", [["2025", "Koji", "1-0", "1-0", 1, 1, 7.9, 0, 0], ["2025", "Mayank", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Jake Elliott", "K", "PHI", [["2025", "Neil", "8-2", "6-2", 10, 8, 6.5, 1, 0], ["2025", "Abhi", "1-0", "1-0", 1, 1, 2.0, 0, 0], ["2025", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Jake Ferguson", "TE", "DAL", [["2025", "Ekaansh", "10-2", "8-2", 14, 12, 12.3, 1, 1], ["2026", "Koji", "3-1", "2-1", 4, 3, 10.7, 0, 0]]], ["Jake Tonges", "TE", "SF", [["2025", "Koji", "0-1", "0-1", 1, 1, 7.1, 0, 0]]], ["Jakobi Meyers", "WR", "JAX", [["2025", "Rafael", "6-8", "4-5", 16, 11, 12.2, 0, 0], ["2026", "Abhi", "0-4", "0-1", 4, 1, 3.8, 0, 0]]], ["Jalen Coker", "WR", "CAR", [["2025", "Koji", "1-0", "0-0", 2, 1, 7.7, 0, 0], ["2026", "Koji", "3-1", "0-1", 4, 1, 3.8, 0, 0]]], ["Jalen Hurts", "QB", "PHI", [["2025", "Neil", "11-3", "10-3", 16, 15, 18.8, 1, 0], ["2026", "Rafael", "3-1", "1-0", 4, 1, 24.7, 0, 0]]], ["Jalen McMillan", "WR", "TB", [["2025", "Winston", "0-2", "0-0", 5, 0, null, 0, 0], ["2026", "Koji", "2-1", "0-0", 3, 0, null, 0, 0]]], ["Jalen Nailor", "WR", "LV", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Jalen Tolbert", "WR", "MIA", [["2025", "Rafael", "2-1", "0-1", 3, 1, 0.0, 0, 0]]], ["James Conner", "RB", "ARI", [["2025", "Shravan", "2-1", "2-1", 3, 3, 11.1, 1, 0]]], ["James Cook", "RB", "BUF", [["2025", "Neil", "11-3", "10-3", 16, 15, 18.0, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 16.6, 0, 0]]], ["Jameson Williams", "WR", "DET", [["2025", "Winston", "1-1", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "2-3", "0-1", 5, 1, 0.0, 1, 0], ["2025", "Shravan", "4-2", "2-1", 8, 5, 16.5, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 9.7, 0, 0]]], ["Jared Goff", "QB", "DET", [["2025", "Winston", "5-9", "3-5", 17, 8, 15.4, 0, 0], ["2026", "Winston", "2-2", "0-1", 4, 1, 16.4, 0, 0]]], ["Jason Myers", "K", "SEA", [["2025", "Ekaansh", "8-2", "8-1", 12, 11, 10.8, 1, 1], ["2026", "Rafael", "3-1", "3-1", 4, 4, 7.4, 0, 0]]], ["Jauan Jennings", "WR", "MIN", [["2025", "Abhi", "7-7", "3-2", 16, 7, 11.5, 0, 0], ["2026", "Sathkrith", "3-0", "0-0", 3, 0, null, 0, 0]]], ["Javonte Williams", "RB", "DAL", [["2025", "Safwan", "2-0", "1-0", 2, 1, 25.0, 1, 0], ["2025", "Winston", "4-5", "3-5", 9, 8, 15.1, 0, 0], ["2025", "Koji", "1-2", "1-2", 6, 6, 12.8, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 20.4, 0, 0]]], ["Jaxon Smith-Njigba", "WR", "SEA", [["2025", "Ani", "8-6", "7-6", 16, 15, 22.0, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 29.2, 0, 0]]], ["Jaxson Dart", "QB", "NYG", [["2025", "Koji", "3-6", "0-1", 9, 1, 19.4, 0, 0], ["2025", "Sathkrith", "1-1", "1-0", 5, 4, 15.7, 1, 0], ["2026", "Safwan", "1-1", "1-1", 2, 2, 13.7, 0, 0]]], ["Jayden Daniels", "QB", "WAS", [["2025", "Rafael", "6-8", "2-5", 16, 7, 16.8, 0, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 16.2, 0, 0]]], ["Jayden Higgins", "WR", "HOU", [["2025", "Neil", "2-0", "0-0", 2, 0, null, 1, 0], ["2025", "Winston", "0-2", "0-0", 3, 0, null, 0, 0]]], ["Jayden Reed", "WR", "GB", [["2025", "Mayank", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Abhi", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Winston", "0-0", "0-0", 2, 1, 7.1, 0, 0], ["2026", "Ani", "1-1", "0-1", 2, 1, 5.0, 0, 0]]], ["Jaydon Blue", "RB", "PHI", [["2025", "Alex", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Jaylen Waddle", "WR", "DEN", [["2025", "Mayank", "4-10", "3-9", 16, 14, 12.3, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 11.0, 0, 0]]], ["Jaylen Warren", "RB", "PIT", [["2025", "Koji", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Mayank", "2-9", "2-8", 13, 12, 12.5, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 14.1, 0, 0]]], ["Jaylen Wright", "RB", "MIA", [["2025", "Koji", "0-0", "0-0", 1, 0, null, 0, 0], ["2026", "Shravan", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Jaylin Noel", "WR", "HOU", [["2025", "Rafael", "1-0", "1-0", 1, 1, 11.3, 0, 0]]], ["Jeremiyah Love", "RB", "ARI", [["2026", "Abhi", "0-4", "0-4", 4, 4, 12.2, 0, 0]]], ["Jerome Ford", "RB", "", [["2025", "Ekaansh", "0-1", "0-0", 1, 0, null, 1, 1]]], ["Jerry Jeudy", "WR", "CLE", [["2025", "Winston", "2-3", "0-0", 5, 0, null, 0, 0], ["2025", "Ani", "1-1", "0-0", 2, 0, null, 1, 0], ["2025", "Neil", "1-0", "1-0", 1, 1, 5.1, 1, 0], ["2025", "Mayank", "1-2", "0-1", 3, 1, 2.9, 0, 0], ["2025", "Alex", "0-0", "0-0", 2, 0, null, 0, 0]]], ["Joe Burrow", "QB", "CIN", [["2025", "Koji", "5-7", "0-3", 15, 4, 12.2, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 19.2, 0, 0]]], ["Joe Flacco", "QB", "CIN", [["2025", "Winston", "3-1", "1-0", 4, 1, 24.3, 0, 0]]], ["Joe Mixon", "RB", "", [["2025", "Mayank", "4-10", "0-0", 16, 0, null, 0, 0], ["2026", "Mayank", "0-1", "0-0", 1, 0, null, 0, 0]]], ["John Metchie", "WR", "CAR", [["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-1", "0-1", 3, 1, 7.4, 0, 0]]], ["Jonathan Taylor", "RB", "IND", [["2025", "Koji", "4-7", "4-6", 11, 10, 27.4, 0, 0], ["2025", "Winston", "0-3", "0-3", 6, 6, 13.8, 0, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 21.6, 0, 0]]], ["Jonathon Brooks", "RB", "CAR", [["2026", "Winston", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Jonnu Smith", "TE", "GB", [["2025", "Shravan", "1-1", "0-1", 2, 1, 6.7, 1, 0]]], ["Jordan Addison", "WR", "MIN", [["2025", "Alex", "3-11", "2-7", 16, 11, 9.9, 0, 0], ["2026", "Arnav", "2-2", "1-0", 4, 1, 20.0, 0, 0]]], ["Jordan Love", "QB", "GB", [["2025", "Neil", "4-2", "0-0", 6, 0, null, 1, 0], ["2025", "Mayank", "1-3", "1-0", 4, 1, 28.3, 0, 0], ["2025", "Ekaansh", "2-0", "1-0", 4, 2, 12.0, 1, 1], ["2026", "Mayank", "0-4", "0-1", 4, 1, 13.1, 0, 0]]], ["Jordan Mason", "RB", "MIN", [["2025", "Koji", "4-6", "3-3", 10, 6, 10.6, 0, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Jordyn Tyson", "WR", "NO", [["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Josh Allen", "QB", "BUF", [["2025", "Shravan", "7-7", "6-7", 16, 15, 23.4, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 28.1, 0, 0]]], ["Josh Downs", "WR", "IND", [["2025", "Rafael", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Alex", "2-6", "0-4", 10, 6, 8.9, 0, 0], ["2026", "Winston", "2-2", "1-2", 4, 3, 7.7, 0, 0]]], ["Josh Jacobs", "RB", "GB", [["2025", "Neil", "11-3", "10-2", 16, 14, 15.3, 1, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Josh Reynolds", "WR", "", [["2025", "Shravan", "1-0", "1-0", 1, 1, 5.9, 1, 0]]], ["Joshua Karty", "K", "", [["2025", "Koji", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["JuJu Smith-Schuster", "WR", "", [["2025", "Abhi", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Justice Hill", "RB", "BAL", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Mayank", "1-5", "0-1", 6, 1, 2.2, 0, 0]]], ["Justin Fields", "QB", "KC", [["2025", "Winston", "2-4", "1-2", 6, 3, 11.6, 0, 0], ["2025", "Neil", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Justin Herbert", "QB", "LAC", [["2025", "Ani", "8-6", "8-5", 16, 15, 18.9, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 10.9, 0, 0]]], ["Justin Jefferson", "WR", "MIN", [["2025", "Sathkrith", "8-6", "8-5", 17, 16, 11.4, 1, 0], ["2026", "Koji", "3-1", "2-1", 4, 3, 15.0, 0, 0]]], ["Juwan Johnson", "TE", "NO", [["2025", "Shravan", "2-4", "1-2", 6, 3, 6.9, 1, 0], ["2025", "Safwan", "4-1", "1-0", 8, 1, 10.6, 1, 0], ["2026", "Abhi", "0-4", "0-1", 4, 1, 11.9, 0, 0]]], ["Ka'imi Fairbairn", "K", "HOU", [["2025", "Sathkrith", "8-6", "7-4", 17, 14, 11.7, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 9.8, 0, 0]]], ["Kaelon Black", "RB", "SF", [["2026", "Arnav", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Kaleb Johnson", "RB", "GB", [["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Ani", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Kalif Raymond", "WR", "CHI", [["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Kansas City Chiefs", "DEF", "KC", [["2025", "Sathkrith", "0-1", "0-1", 3, 2, 3.5, 1, 0], ["2025", "Winston", "2-2", "1-2", 4, 3, 9.0, 0, 0], ["2025", "Mayank", "1-1", "1-1", 2, 2, 6.5, 0, 0], ["2026", "Winston", "0-1", "0-1", 1, 1, 13.0, 0, 0], ["2026", "Abhi", "0-2", "0-2", 2, 2, 6.5, 0, 0]]], ["Kareem Hunt", "RB", "", [["2025", "Abhi", "3-3", "0-0", 6, 0, null, 0, 0], ["2025", "Koji", "2-3", "0-3", 5, 3, 15.2, 0, 0]]], ["KaVontae Turpin", "WR", "DAL", [["2025", "Ani", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Kayshon Boutte", "WR", "HOU", [["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2025", "Neil", "7-1", "1-0", 10, 1, 13.5, 1, 0], ["2026", "Sathkrith", "3-0", "0-0", 3, 0, null, 0, 0]]], ["KC Concepcion", "WR", "CLE", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Winston", "2-1", "0-0", 3, 0, null, 0, 0]]], ["Keaton Mitchell", "RB", "LAC", [["2026", "Safwan", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Keenan Allen", "WR", "IND", [["2025", "Shravan", "3-2", "0-2", 7, 2, 12.9, 1, 0], ["2025", "Abhi", "5-4", "4-2", 9, 6, 10.8, 0, 0], ["2026", "Safwan", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Sathkrith", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Kendre Miller", "RB", "NO", [["2025", "Ekaansh", "2-0", "0-0", 2, 0, null, 1, 1]]], ["Kendrick Bourne", "WR", "ARI", [["2025", "Shravan", "2-4", "2-0", 6, 2, 4.4, 1, 0]]], ["Kenneth Walker", "RB", "KC", [["2025", "Ani", "8-6", "4-2", 16, 6, 11.3, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 27.5, 0, 0]]], ["Kenny Gainwell", "RB", "TB", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Neil", "4-2", "0-0", 6, 0, null, 1, 0], ["2025", "Safwan", "4-1", "2-1", 8, 5, 11.5, 1, 0], ["2026", "Safwan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Kenyon Sadiq", "TE", "NYJ", [["2026", "Koji", "1-0", "1-0", 1, 1, 0.0, 0, 0]]], ["Keon Coleman", "WR", "BUF", [["2025", "Abhi", "6-6", "0-3", 12, 3, 6.0, 0, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Khalil Shakir", "WR", "BUF", [["2025", "Ani", "8-6", "2-0", 16, 2, 15.2, 1, 0], ["2026", "Ekaansh", "1-3", "0-2", 4, 2, 4.2, 0, 0]]], ["Kimani Vidal", "RB", "LAC", [["2025", "Rafael", "3-3", "2-3", 6, 5, 10.2, 0, 0], ["2025", "Winston", "0-2", "0-2", 4, 4, 9.8, 0, 0]]], ["Kyle Monangai", "RB", "CHI", [["2025", "Safwan", "1-1", "0-0", 2, 0, null, 1, 0], ["2025", "Abhi", "2-4", "1-1", 8, 2, 15.8, 0, 0], ["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Kyle Pitts", "TE", "ATL", [["2025", "Neil", "11-3", "9-2", 16, 13, 9.8, 1, 0], ["2026", "Ani", "3-1", "0-1", 4, 1, 0.0, 0, 0]]], ["Kyle Williams", "WR", "NE", [["2025", "Safwan", "2-0", "0-0", 2, 0, null, 1, 0]]], ["Kyler Murray", "QB", "MIN", [["2025", "Ekaansh", "7-2", "2-1", 9, 3, 16.2, 1, 1], ["2026", "Koji", "3-1", "1-1", 4, 2, 10.9, 0, 0]]], ["Kyren Williams", "RB", "LAR", [["2025", "Winston", "5-6", "4-6", 11, 10, 16.6, 0, 0], ["2025", "Abhi", "2-1", "2-1", 5, 5, 14.0, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 22.4, 0, 0]]], ["Ladd McConkey", "WR", "LAC", [["2025", "Ani", "8-6", "7-4", 16, 13, 12.3, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 9.1, 0, 0]]], ["Lamar Jackson", "QB", "BAL", [["2025", "Mayank", "4-10", "3-7", 16, 12, 15.4, 0, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 19.8, 0, 0]]], ["Las Vegas Raiders", "DEF", "LV", [["2025", "Neil", "1-0", "1-0", 1, 1, 17.0, 1, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 6.0, 0, 0], ["2026", "Neil", "0-1", "0-1", 1, 1, 15.0, 0, 0]]], ["Los Angeles Chargers", "DEF", "LAC", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 7.0, 1, 0], ["2025", "Abhi", "0-2", "0-2", 2, 2, 9.0, 0, 0], ["2025", "Ani", "0-1", "0-1", 1, 1, -2.0, 1, 0], ["2025", "Shravan", "1-1", "0-1", 2, 1, 9.0, 1, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 6.0, 0, 0], ["2026", "Safwan", "1-0", "1-0", 1, 1, 1.0, 0, 0], ["2026", "Winston", "1-0", "1-0", 1, 1, 5.0, 0, 0]]], ["Los Angeles Rams", "DEF", "LAR", [["2025", "Sathkrith", "0-2", "0-2", 2, 2, 7.5, 1, 0], ["2025", "Ekaansh", "1-0", "1-0", 1, 1, 1.0, 1, 1], ["2025", "Rafael", "1-1", "1-1", 2, 2, 15.5, 0, 0], ["2025", "Safwan", "4-2", "4-1", 6, 5, 9.4, 1, 0], ["2025", "Alex", "0-1", "0-1", 3, 3, 7.0, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 6.0, 0, 0]]], ["Luke McCaffrey", "WR", "WAS", [["2025", "Safwan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Luther Burden", "WR", "CHI", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "0-2", "0-1", 5, 2, 19.4, 0, 0], ["2026", "Rafael", "3-1", "2-1", 4, 3, 9.0, 0, 0]]], ["Mack Hollins", "WR", "NE", [["2025", "Rafael", "1-1", "1-0", 2, 1, 10.4, 0, 0]]], ["Makai Lemon", "WR", "PHI", [["2026", "Shravan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Malachi Fields", "WR", "NYG", [["2026", "Neil", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Malik Davis", "RB", "DAL", [["2026", "Rafael", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Malik Nabers", "WR", "NYG", [["2025", "Abhi", "5-5", "1-3", 12, 4, 14.3, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 11.2, 0, 0]]], ["Malik Washington", "WR", "MIA", [["2025", "Sathkrith", "1-1", "0-0", 2, 0, null, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Malik Willis", "QB", "MIA", [["2026", "Neil", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Marcus Mariota", "QB", "WAS", [["2025", "Rafael", "4-2", "3-1", 6, 4, 17.2, 0, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 14.7, 1, 0]]], ["Mark Andrews", "TE", "BAL", [["2025", "Abhi", "7-7", "5-2", 16, 9, 4.3, 0, 0], ["2026", "Safwan", "2-2", "0-1", 4, 1, 10.9, 0, 0]]], ["Marquise Brown", "WR", "PHI", [["2025", "Ekaansh", "7-1", "3-0", 10, 3, 8.3, 1, 1]]], ["MarShawn Lloyd", "RB", "GB", [["2026", "Rafael", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Marvin Harrison", "WR", "ARI", [["2025", "Winston", "2-5", "2-5", 7, 7, 10.8, 0, 0], ["2025", "Neil", "6-1", "2-0", 9, 2, 18.5, 1, 0], ["2026", "Ekaansh", "1-3", "1-0", 4, 1, 4.3, 0, 0]]], ["Marvin Mims", "WR", "DEN", [["2025", "Neil", "2-0", "0-0", 2, 0, null, 1, 0]]], ["Mason Taylor", "TE", "NYJ", [["2025", "Safwan", "0-3", "0-3", 3, 3, 7.2, 1, 0]]], ["Matt Gay", "K", "LV", [["2025", "Sathkrith", "0-1", "0-1", 1, 1, 7.0, 1, 0]]], ["Matt Prater", "K", "", [["2025", "Shravan", "1-2", "1-1", 3, 2, 10.5, 1, 0], ["2025", "Alex", "0-1", "0-1", 1, 1, 2.0, 0, 0], ["2025", "Safwan", "1-1", "0-1", 2, 1, 1.0, 1, 0]]], ["Matthew Golden", "WR", "GB", [["2025", "Alex", "3-11", "0-2", 14, 2, 3.1, 0, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0], ["2026", "Shravan", "0-2", "0-2", 2, 2, 16.4, 0, 0]]], ["Matthew Stafford", "QB", "LAR", [["2025", "Mayank", "1-6", "0-3", 7, 3, 20.8, 0, 0], ["2025", "Winston", "0-2", "0-1", 5, 3, 17.1, 0, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Matthew Wright", "K", "", [["2025", "Sathkrith", "0-1", "0-1", 1, 1, 4.0, 1, 0]]], ["Miami Dolphins", "DEF", "MIA", [["2025", "Neil", "3-1", "3-1", 4, 4, 6.5, 1, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 2.0, 1, 0], ["2025", "Sathkrith", "2-1", "1-1", 3, 2, 13.5, 1, 0]]], ["Michael Badgley", "K", "", [["2025", "Shravan", "1-1", "1-1", 2, 2, 6.5, 1, 0], ["2025", "Koji", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["Michael Carter", "RB", "TEN", [["2025", "Neil", "1-1", "0-1", 2, 1, 18.3, 1, 0], ["2025", "Alex", "1-1", "1-1", 4, 2, 8.2, 0, 0]]], ["Michael Mayer", "TE", "LV", [["2025", "Safwan", "1-0", "0-0", 2, 0, null, 1, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 2.0, 1, 0], ["2026", "Shravan", "1-0", "1-0", 1, 1, 9.2, 0, 0]]], ["Michael Pittman", "WR", "PIT", [["2025", "Mayank", "3-8", "2-3", 11, 5, 12.0, 0, 0], ["2025", "Winston", "0-3", "0-3", 6, 6, 8.2, 0, 0], ["2026", "Koji", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Michael Wilson", "WR", "ARI", [["2025", "Shravan", "3-1", "1-1", 6, 4, 18.4, 1, 0], ["2026", "Shravan", "2-2", "0-1", 4, 1, 16.5, 0, 0]]], ["Mike Evans", "WR", "SF", [["2025", "Sathkrith", "6-5", "1-3", 11, 4, 8.5, 1, 0], ["2025", "Neil", "0-1", "0-0", 3, 0, null, 1, 0], ["2026", "Shravan", "2-2", "1-1", 4, 2, 14.6, 0, 0]]], ["Mike Gesicki", "TE", "CIN", [["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Mike Washington", "RB", "LV", [["2026", "Safwan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Minnesota Vikings", "DEF", "MIN", [["2025", "Koji", "2-3", "2-3", 5, 5, 11.0, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 11.0, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 13.5, 0, 0]]], ["Najee Harris", "RB", "NYG", [["2025", "Sathkrith", "0-2", "0-0", 2, 0, null, 1, 0]]], ["New England Patriots", "DEF", "NE", [["2025", "Winston", "1-0", "1-0", 1, 1, 7.0, 0, 0], ["2025", "Koji", "1-2", "1-2", 3, 3, 12.0, 0, 0], ["2025", "Ekaansh", "5-1", "3-0", 8, 4, 7.5, 1, 1], ["2026", "Ani", "1-0", "1-0", 1, 1, 23.0, 0, 0]]], ["New Orleans Saints", "DEF", "NO", [["2025", "Mayank", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Shravan", "0-0", "0-0", 2, 2, 12.0, 1, 0], ["2026", "Shravan", "0-1", "0-1", 1, 1, -3.0, 0, 0]]], ["New York Giants", "DEF", "NYG", [["2025", "Sathkrith", "0-0", "0-0", 2, 0, null, 1, 0], ["2026", "Neil", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["New York Jets", "DEF", "NYJ", [["2025", "Mayank", "0-2", "0-2", 2, 2, 10.0, 0, 0]]], ["Nick Chubb", "RB", "", [["2025", "Mayank", "2-3", "2-1", 5, 3, 9.4, 0, 0], ["2025", "Alex", "1-5", "1-3", 6, 4, 3.8, 0, 0]]], ["Nick Folk", "K", "ATL", [["2025", "Koji", "0-1", "0-1", 1, 1, 5.0, 0, 0]]], ["Nico Collins", "WR", "HOU", [["2025", "Mayank", "4-10", "3-7", 16, 12, 13.8, 0, 0], ["2026", "Winston", "2-2", "0-2", 4, 2, 26.0, 0, 0]]], ["Noah Fant", "TE", "NO", [["2025", "Ani", "1-0", "1-0", 1, 1, 10.8, 1, 0]]], ["Ollie Gordon", "RB", "MIA", [["2025", "Safwan", "2-0", "0-0", 2, 0, null, 1, 0], ["2026", "Arnav", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Omarion Hampton", "RB", "LAC", [["2025", "Alex", "3-11", "1-5", 16, 8, 16.0, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 11.2, 0, 0]]], ["Oronde Gadsden", "TE", "LAC", [["2025", "Mayank", "1-4", "1-3", 5, 4, 10.2, 0, 0], ["2025", "Abhi", "2-1", "0-0", 5, 0, null, 0, 0], ["2026", "Ekaansh", "1-1", "0-1", 2, 1, 0.0, 0, 0]]], ["Parker Washington", "WR", "JAX", [["2025", "Rafael", "0-2", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 12.8, 0, 0]]], ["Patrick Mahomes", "QB", "KC", [["2025", "Alex", "3-11", "3-10", 14, 13, 21.7, 0, 0], ["2026", "Winston", "2-2", "2-1", 4, 3, 20.6, 0, 0]]], ["Philadelphia Eagles", "DEF", "PHI", [["2025", "Shravan", "2-4", "2-4", 6, 6, 7.0, 1, 0], ["2025", "Rafael", "1-0", "1-0", 1, 1, 6.0, 0, 0], ["2025", "Ani", "1-1", "0-0", 4, 2, 10.5, 1, 0], ["2026", "Shravan", "2-0", "2-0", 2, 2, 4.0, 0, 0]]], ["Pittsburgh Steelers", "DEF", "PIT", [["2025", "Ekaansh", "6-2", "5-2", 8, 7, 6.7, 1, 1], ["2025", "Sathkrith", "1-0", "1-0", 3, 2, 11.0, 1, 0], ["2025", "Abhi", "1-0", "1-0", 1, 1, 4.0, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 10.8, 0, 0]]], ["Puka Nacua", "WR", "LAR", [["2025", "Neil", "5-2", "4-2", 7, 6, 23.1, 1, 0], ["2025", "Winston", "3-4", "2-4", 10, 9, 23.4, 0, 0], ["2026", "Arnav", "2-2", "1-2", 4, 3, 13.4, 0, 0]]], ["Quentin Johnston", "WR", "LAC", [["2025", "Sathkrith", "8-5", "2-2", 16, 4, 8.4, 1, 0], ["2026", "Abhi", "0-2", "0-1", 2, 1, 3.7, 0, 0]]], ["Quinshon Judkins", "RB", "CLE", [["2025", "Sathkrith", "8-6", "6-3", 17, 11, 12.5, 1, 0], ["2026", "Sathkrith", "4-0", "3-0", 4, 3, 13.8, 0, 0]]], ["Rachaad White", "RB", "WAS", [["2025", "Safwan", "4-4", "1-3", 8, 4, 14.3, 1, 0], ["2025", "Shravan", "2-1", "1-1", 3, 2, 9.3, 1, 0], ["2026", "Winston", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Raheem Mostert", "RB", "", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Rashee Rice", "WR", "KC", [["2025", "Ekaansh", "11-3", "5-2", 16, 7, 19.7, 1, 1], ["2026", "Shravan", "2-0", "2-0", 2, 2, 11.1, 0, 0], ["2026", "Neil", "1-1", "1-1", 2, 2, 7.9, 0, 0]]], ["Rashid Shaheed", "WR", "SEA", [["2025", "Sathkrith", "8-6", "0-0", 17, 2, 5.5, 1, 0], ["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Ray Davis", "RB", "BUF", [["2025", "Ekaansh", "3-1", "0-0", 4, 0, null, 1, 1]]], ["Rhamondre Stevenson", "RB", "NE", [["2025", "Ekaansh", "0-1", "0-0", 1, 0, null, 1, 1], ["2025", "Neil", "7-2", "2-0", 9, 2, 11.4, 1, 0], ["2025", "Shravan", "2-1", "0-0", 5, 0, null, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 16.4, 0, 0]]], ["Ricky Pearsall", "WR", "SF", [["2025", "Rafael", "6-8", "3-1", 16, 4, 13.1, 0, 0]]], ["Rico Dowdle", "RB", "PIT", [["2025", "Ani", "5-5", "4-4", 12, 9, 15.3, 1, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Riley Patterson", "K", "MIA", [["2025", "Ani", "0-1", "0-1", 1, 1, 11.0, 1, 0]]], ["RJ Harvey", "RB", "DEN", [["2025", "Winston", "5-6", "4-1", 11, 5, 5.8, 0, 0], ["2025", "Mayank", "1-2", "1-1", 5, 4, 21.0, 0, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Rome Odunze", "WR", "CHI", [["2025", "Rafael", "6-8", "6-5", 16, 12, 10.9, 0, 0], ["2026", "Sathkrith", "4-0", "2-0", 4, 2, 7.2, 0, 0]]], ["Romeo Doubs", "WR", "NE", [["2025", "Winston", "4-6", "1-0", 10, 1, 9.4, 0, 0], ["2025", "Mayank", "1-2", "0-0", 5, 0, null, 0, 0], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Roschon Johnson", "RB", "CHI", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Rafael", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Russell Wilson", "QB", "", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Sam Darnold", "QB", "SEA", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Winston", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "5-2", "2-0", 10, 2, 22.9, 1, 0]]], ["Sam LaPorta", "TE", "DET", [["2025", "Ani", "3-0", "3-0", 3, 3, 8.9, 1, 0], ["2025", "Koji", "3-5", "1-3", 8, 4, 10.9, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 14.2, 0, 0]]], ["San Francisco 49ers", "DEF", "SF", [["2025", "Rafael", "1-0", "1-0", 1, 1, 7.0, 0, 0], ["2025", "Alex", "1-2", "1-2", 3, 3, 3.0, 0, 0], ["2025", "Neil", "4-0", "4-0", 4, 4, 7.5, 1, 0], ["2025", "Sathkrith", "0-1", "0-0", 2, 1, 0.0, 1, 0], ["2026", "Safwan", "1-1", "1-1", 2, 2, 5.0, 0, 0], ["2026", "Arnav", "1-0", "1-0", 1, 1, 5.0, 0, 0]]], ["Saquon Barkley", "RB", "PHI", [["2025", "Ani", "8-6", "7-6", 16, 15, 15.0, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 5.8, 0, 0]]], ["Sean Tucker", "RB", "TB", [["2025", "Alex", "1-4", "0-2", 5, 2, 5.7, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 5.6, 0, 0]]], ["Seattle Seahawks", "DEF", "SEA", [["2025", "Safwan", "4-3", "4-3", 7, 7, 9.4, 1, 0], ["2025", "Koji", "2-4", "2-4", 9, 9, 12.0, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 8.8, 0, 0]]], ["Spencer Shrader", "K", "IND", [["2025", "Shravan", "1-2", "0-2", 3, 2, 6.0, 1, 0], ["2026", "Abhi", "0-1", "0-1", 1, 1, 17.4, 0, 0]]], ["Stefon Diggs", "WR", "WAS", [["2025", "Sathkrith", "7-5", "3-2", 12, 5, 12.8, 1, 0], ["2025", "Koji", "1-1", "1-0", 5, 4, 14.0, 0, 0], ["2026", "Neil", "2-2", "1-0", 4, 1, 21.7, 0, 0]]], ["T.J. Hockenson", "TE", "MIN", [["2025", "Ekaansh", "11-3", "3-1", 14, 4, 4.7, 1, 1]]], ["Tampa Bay Buccaneers", "DEF", "TB", [["2025", "Rafael", "1-0", "1-0", 1, 1, 15.0, 0, 0], ["2025", "Shravan", "1-1", "0-1", 2, 1, 28.0, 1, 0], ["2025", "Mayank", "1-2", "1-2", 5, 5, 3.6, 0, 0], ["2026", "Neil", "1-0", "1-0", 1, 1, 2.0, 0, 0]]], ["Tank Bigsby", "RB", "PHI", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tank Dell", "WR", "HOU", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Taysom Hill", "TE", "", [["2025", "Safwan", "0-0", "0-0", 1, 1, 0.0, 1, 0]]], ["Tee Higgins", "WR", "CIN", [["2025", "Shravan", "7-7", "6-2", 16, 9, 16.9, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 17.8, 0, 0]]], ["Tennessee Titans", "DEF", "TEN", [["2025", "Winston", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["Terrance Ferguson", "TE", "LAR", [["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Terry McLaurin", "WR", "WAS", [["2025", "Neil", "11-3", "4-2", 16, 8, 11.1, 1, 0], ["2026", "Koji", "3-1", "2-0", 4, 2, 5.2, 0, 0]]], ["Tetairoa McMillan", "WR", "CAR", [["2025", "Sathkrith", "8-6", "8-5", 17, 14, 12.9, 1, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 18.6, 0, 0]]], ["Tez Johnson", "WR", "TB", [["2025", "Sathkrith", "6-2", "0-0", 8, 0, null, 1, 0]]], ["Theo Johnson", "TE", "NYG", [["2025", "Alex", "1-4", "0-1", 7, 1, 14.5, 0, 0]]], ["Tony Pollard", "RB", "TEN", [["2025", "Safwan", "7-5", "3-1", 12, 4, 10.0, 1, 0], ["2025", "Rafael", "0-1", "0-1", 1, 1, 5.3, 0, 0], ["2025", "Shravan", "1-0", "1-0", 3, 1, 28.1, 1, 0], ["2026", "Winston", "2-2", "2-0", 4, 2, 10.6, 0, 0]]], ["Tory Horton", "WR", "SEA", [["2025", "Ani", "2-0", "0-0", 2, 0, null, 1, 0], ["2025", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Travis Etienne", "RB", "NO", [["2025", "Neil", "11-3", "9-3", 16, 14, 14.2, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 10.9, 0, 0]]], ["Travis Hunter", "DB", "JAX", [["2025", "Neil", "11-2", "2-1", 13, 3, 8.1, 1, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Travis Kelce", "TE", "KC", [["2025", "Alex", "3-11", "3-10", 16, 15, 11.7, 0, 0], ["2026", "Arnav", "2-2", "2-0", 4, 2, 8.7, 0, 0]]], ["Tre Tucker", "WR", "LV", [["2025", "Winston", "3-4", "1-3", 7, 4, 6.2, 0, 0], ["2025", "Koji", "0-1", "0-1", 1, 1, 14.7, 0, 0], ["2025", "Neil", "2-1", "1-0", 5, 1, 5.8, 1, 0], ["2026", "Rafael", "2-0", "0-0", 2, 0, null, 0, 0]]], ["Tre' Harris", "WR", "LAC", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["TreVeyon Henderson", "RB", "NE", [["2025", "Sathkrith", "8-6", "4-3", 17, 10, 13.3, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 4.0, 0, 0]]], ["Trevor Lawrence", "QB", "JAX", [["2025", "Neil", "3-0", "1-0", 3, 1, 22.2, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 20.1, 1, 0], ["2025", "Rafael", "0-2", "0-1", 4, 3, 32.4, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 16.3, 0, 0]]], ["Trey Benson", "RB", "ARI", [["2025", "Rafael", "6-7", "1-0", 13, 1, 10.4, 0, 0]]], ["Trey McBride", "TE", "ARI", [["2025", "Sathkrith", "8-6", "7-6", 17, 16, 18.9, 1, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 17.3, 0, 0]]], ["Trey Smack", "K", "GB", [["2026", "Abhi", "0-1", "0-1", 1, 1, 1.0, 0, 0]]], ["Troy Franklin", "WR", "DEN", [["2025", "Alex", "1-3", "0-2", 4, 2, 5.8, 0, 0], ["2025", "Koji", "2-5", "2-1", 10, 3, 15.3, 0, 0]]], ["Tucker Kraft", "TE", "GB", [["2025", "Abhi", "4-5", "2-4", 9, 6, 13.8, 0, 0], ["2026", "Abhi", "0-4", "0-3", 4, 3, 6.5, 0, 0]]], ["Ty Johnson", "RB", "BUF", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tyjae Spears", "RB", "TEN", [["2025", "Sathkrith", "2-4", "0-0", 6, 0, null, 1, 0], ["2025", "Winston", "3-4", "1-1", 9, 3, 9.2, 0, 0], ["2026", "Ani", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Tyler Allgeier", "RB", "ARI", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0], ["2025", "Ekaansh", "5-2", "0-1", 7, 1, 9.4, 1, 1], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Tyler Higbee", "TE", "LAR", [["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tyler Lockett", "WR", "", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Tyler Loop", "K", "BAL", [["2025", "Winston", "5-9", "5-8", 16, 15, 8.1, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 10.5, 0, 0]]], ["Tyler Shough", "QB", "NO", [["2025", "Safwan", "0-0", "0-0", 1, 1, 21.9, 1, 0], ["2026", "Safwan", "2-2", "1-1", 4, 2, 19.9, 0, 0]]], ["Tyler Warren", "TE", "IND", [["2025", "Winston", "5-9", "4-9", 17, 16, 11.3, 0, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 12.1, 0, 0]]], ["Tyquan Thornton", "WR", "KC", [["2025", "Mayank", "1-4", "0-0", 5, 0, null, 0, 0]]], ["Tyreek Hill", "WR", "", [["2025", "Alex", "1-4", "1-3", 5, 4, 13.4, 0, 0], ["2026", "Safwan", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Tyrod Taylor", "QB", "GB", [["2025", "Mayank", "1-0", "0-0", 3, 0, null, 0, 0]]], ["Tyrone Tracy", "RB", "NYG", [["2025", "Shravan", "2-4", "1-0", 6, 1, 5.5, 1, 0], ["2025", "Alex", "1-5", "1-4", 8, 7, 9.9, 0, 0], ["2026", "Arnav", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Wan'Dale Robinson", "WR", "TEN", [["2025", "Ekaansh", "2-0", "0-0", 2, 0, null, 1, 1], ["2025", "Abhi", "6-4", "4-4", 12, 10, 12.8, 0, 0], ["2026", "Neil", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Washington Commanders", "DEF", "WAS", [["2025", "Mayank", "2-5", "0-5", 7, 5, 6.4, 0, 0], ["2025", "Rafael", "0-1", "0-1", 1, 1, 3.0, 0, 0]]], ["Wil Lutz", "K", "DEN", [["2025", "Ekaansh", "0-1", "0-1", 1, 1, 9.0, 1, 1], ["2025", "Koji", "0-1", "0-1", 4, 4, 6.8, 0, 0]]], ["Will Reichard", "K", "MIN", [["2025", "Alex", "3-10", "3-9", 15, 14, 9.0, 0, 0]]], ["Woody Marks", "RB", "HOU", [["2025", "Ani", "5-6", "1-3", 13, 5, 6.0, 1, 0], ["2026", "Ekaansh", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Xavier Hutchinson", "WR", "HOU", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Xavier Legette", "WR", "CAR", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Xavier Worthy", "WR", "KC", [["2025", "Rafael", "6-5", "2-4", 11, 6, 7.6, 0, 0], ["2025", "Neil", "2-1", "1-0", 5, 1, 9.9, 1, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Younghoe Koo", "K", "", [["2025", "Alex", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["Zach Charbonnet", "RB", "SEA", [["2025", "Abhi", "7-7", "2-1", 16, 3, 9.3, 0, 0], ["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Zach Ertz", "TE", "PHI", [["2025", "Rafael", "2-0", "1-0", 2, 1, 6.8, 0, 0], ["2025", "Safwan", "1-0", "1-0", 1, 1, 0.0, 1, 0], ["2025", "Neil", "3-0", "1-0", 3, 1, 12.7, 1, 0], ["2025", "Shravan", "2-1", "1-0", 3, 1, 8.6, 1, 0], ["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Koji", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Zay Flowers", "WR", "BAL", [["2025", "Shravan", "7-7", "4-5", 16, 10, 10.1, 1, 0], ["2026", "Sathkrith", "4-0", "3-0", 4, 3, 22.4, 0, 0]]], ["Zonovan Knight", "RB", "ARI", [["2025", "Rafael", "1-1", "0-1", 2, 1, 6.7, 0, 0], ["2025", "Neil", "2-1", "0-0", 3, 0, null, 1, 0]]]];
+const DATA = [["A.J. Brown", "WR", "NE", [["2025", "Alex", "3-11", "3-9", 16, 14, 14.9, 0, 0], ["2026", "Safwan", "2-2", "1-0", 4, 1, 5.6, 0, 0]]], ["Aaron Jones", "RB", "MIN", [["2025", "Ani", "7-3", "0-0", 10, 0, null, 1, 0], ["2025", "Koji", "0-1", "0-1", 1, 1, 11.1, 0, 0], ["2025", "Abhi", "2-1", "0-0", 5, 0, null, 0, 0], ["2026", "Shravan", "2-2", "1-2", 4, 3, 13.8, 0, 0]]], ["Aaron Rodgers", "QB", "PIT", [["2025", "Shravan", "1-0", "1-0", 1, 1, 24.6, 1, 0], ["2025", "Alex", "1-4", "0-1", 7, 2, 7.9, 0, 0]]], ["Adam Thielen", "WR", "", [["2025", "Sathkrith", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Adonai Mitchell", "WR", "NYJ", [["2025", "Rafael", "0-2", "0-1", 4, 3, 9.4, 0, 0], ["2026", "Winston", "2-1", "0-0", 3, 0, null, 0, 0]]], ["AJ Barner", "TE", "SEA", [["2025", "Shravan", "1-2", "0-1", 3, 1, 10.1, 1, 0], ["2025", "Mayank", "0-0", "0-0", 2, 0, null, 0, 0]]], ["Alec Pierce", "WR", "IND", [["2025", "Winston", "3-6", "1-4", 12, 7, 7.5, 0, 0], ["2026", "Winston", "2-2", "1-0", 4, 1, 2.1, 0, 0]]], ["Alvin Kamara", "RB", "NO", [["2025", "Mayank", "4-10", "3-8", 16, 11, 9.2, 0, 0], ["2026", "Shravan", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Amon-Ra St. Brown", "WR", "DET", [["2025", "Mayank", "4-10", "3-10", 16, 15, 17.2, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 22.8, 0, 0]]], ["Andrei Iosivas", "WR", "CIN", [["2025", "Safwan", "3-0", "1-0", 3, 1, 10.6, 1, 0]]], ["Antonio Williams", "WR", "WAS", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Koji", "1-0", "1-0", 1, 1, 5.1, 0, 0]]], ["Arizona Cardinals", "DEF", "ARI", [["2025", "Abhi", "2-1", "2-1", 3, 3, 8.7, 0, 0]]], ["Ashton Jeanty", "RB", "LV", [["2025", "Ekaansh", "11-3", "11-2", 16, 15, 15.0, 1, 1], ["2026", "Safwan", "2-2", "2-2", 4, 4, 18.5, 0, 0]]], ["Atlanta Falcons", "DEF", "ATL", [["2025", "Neil", "0-1", "0-1", 1, 1, 2.0, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 0.0, 1, 0], ["2025", "Abhi", "1-2", "1-2", 3, 3, 7.3, 0, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 5.0, 0, 0]]], ["Audric Estime", "RB", "MIN", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Austin Ekeler", "RB", "WAS", [["2025", "Koji", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Baker Mayfield", "QB", "TB", [["2025", "Safwan", "9-5", "7-5", 17, 13, 17.2, 1, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Baltimore Ravens", "DEF", "BAL", [["2025", "Alex", "0-3", "0-3", 3, 3, 3.3, 0, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, -2.0, 1, 0], ["2025", "Shravan", "3-2", "3-1", 5, 4, 12.0, 1, 0], ["2025", "Neil", "0-1", "0-1", 3, 3, 5.0, 1, 0], ["2026", "Abhi", "0-2", "0-2", 2, 2, 5.0, 0, 0], ["2026", "Ani", "1-0", "1-0", 1, 1, 7.0, 0, 0]]], ["Bhayshul Tuten", "RB", "JAX", [["2025", "Winston", "4-9", "0-0", 16, 0, null, 0, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 13.0, 0, 0]]], ["Bijan Robinson", "RB", "ATL", [["2025", "Rafael", "6-8", "6-7", 16, 15, 21.6, 0, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 26.3, 0, 0]]], ["Blake Corum", "RB", "LAR", [["2025", "Koji", "3-2", "0-0", 5, 0, null, 0, 0], ["2025", "Ekaansh", "1-0", "0-0", 3, 0, null, 1, 1], ["2026", "Rafael", "3-1", "1-0", 4, 1, 3.1, 0, 0]]], ["Bo Nix", "QB", "DEN", [["2025", "Sathkrith", "8-6", "6-6", 17, 12, 18.5, 1, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Neil", "1-1", "1-1", 2, 2, 18.9, 0, 0]]], ["Braelon Allen", "RB", "NYJ", [["2025", "Sathkrith", "2-3", "0-0", 5, 0, null, 1, 0], ["2026", "Ekaansh", "0-1", "0-1", 1, 1, 8.7, 0, 0]]], ["Brandon Aiyuk", "WR", "SF", [["2025", "Ekaansh", "11-3", "0-0", 14, 0, null, 1, 1]]], ["Brandon Aubrey", "K", "DAL", [["2025", "Safwan", "9-5", "9-4", 17, 16, 11.2, 1, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 10.0, 0, 0]]], ["Brandon McManus", "K", "", [["2025", "Ani", "3-0", "3-0", 3, 3, 4.7, 1, 0]]], ["Brashard Smith", "RB", "KC", [["2025", "Sathkrith", "2-0", "1-0", 2, 1, 0.7, 1, 0]]], ["Breece Hall", "RB", "NYJ", [["2025", "Sathkrith", "8-6", "7-6", 17, 15, 13.3, 1, 0], ["2026", "Neil", "2-2", "1-2", 4, 3, 14.2, 0, 0]]], ["Brenton Strange", "TE", "JAX", [["2025", "Rafael", "1-3", "0-1", 6, 1, 5.7, 0, 0], ["2025", "Neil", "0-1", "0-1", 1, 1, 3.2, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Brian Robinson", "RB", "ATL", [["2025", "Winston", "1-1", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "3-4", "0-0", 7, 0, null, 1, 0], ["2025", "Shravan", "3-2", "0-0", 7, 0, null, 1, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Brian Thomas", "WR", "JAX", [["2025", "Koji", "4-6", "2-4", 10, 6, 11.2, 0, 0], ["2025", "Ani", "1-3", "0-0", 6, 0, null, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 6.4, 0, 0]]], ["Brock Bowers", "TE", "LV", [["2025", "Safwan", "9-5", "8-2", 17, 12, 14.7, 1, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 24.1, 0, 0]]], ["Brock Purdy", "QB", "SF", [["2025", "Rafael", "6-6", "1-1", 12, 2, 15.0, 0, 0], ["2025", "Abhi", "0-0", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "2-1", 4, 3, 26.5, 0, 0]]], ["Bryce Young", "QB", "CAR", [["2026", "Safwan", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Bucky Irving", "RB", "TB", [["2025", "Koji", "4-7", "1-3", 11, 4, 18.0, 0, 0], ["2025", "Abhi", "2-1", "1-1", 5, 4, 11.9, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 11.8, 0, 0]]], ["Buffalo Bills", "DEF", "BUF", [["2025", "Ani", "2-2", "2-2", 4, 4, 9.0, 1, 0], ["2025", "Winston", "1-0", "1-0", 1, 1, 3.0, 0, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 8.0, 1, 0], ["2026", "Safwan", "0-1", "0-1", 1, 1, 5.0, 0, 0]]], ["C.J. Stroud", "QB", "HOU", [["2025", "Alex", "2-7", "0-0", 11, 1, 11.5, 0, 0]]], ["Cade Otton", "TE", "TB", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 8.0, 1, 0], ["2025", "Abhi", "0-1", "0-1", 1, 1, 4.8, 0, 0]]], ["Cairo Santos", "K", "CHI", [["2025", "Sathkrith", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Shravan", "4-3", "4-3", 9, 9, 9.3, 1, 0]]], ["Caleb Douglas", "WR", "MIA", [["2026", "Abhi", "0-3", "0-0", 3, 0, null, 0, 0]]], ["Caleb Williams", "QB", "CHI", [["2025", "Ekaansh", "11-3", "8-2", 16, 11, 19.0, 1, 1], ["2026", "Koji", "3-1", "2-0", 4, 2, 22.5, 0, 0]]], ["Calvin Austin", "WR", "NYG", [["2025", "Neil", "4-1", "2-0", 5, 2, 3.3, 1, 0]]], ["Calvin Ridley", "WR", "TEN", [["2025", "Koji", "1-3", "0-0", 4, 0, null, 0, 0], ["2025", "Shravan", "3-3", "0-0", 6, 0, null, 1, 0]]], ["Cam Little", "K", "JAX", [["2025", "Rafael", "3-1", "3-1", 4, 4, 9.2, 0, 0], ["2025", "Ani", "1-2", "1-2", 5, 5, 10.6, 1, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 9.8, 0, 0]]], ["Cam Skattebo", "RB", "NYG", [["2025", "Neil", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Safwan", "7-5", "2-3", 15, 5, 17.4, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 11.1, 0, 0]]], ["Cam Ward", "QB", "TEN", [["2025", "Safwan", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Cameron Dicker", "K", "LAC", [["2025", "Abhi", "7-7", "6-7", 16, 15, 10.7, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 6.5, 0, 0]]], ["Carnell Tate", "WR", "TEN", [["2026", "Koji", "3-1", "1-0", 4, 1, 21.5, 0, 0]]], ["Carolina Panthers", "DEF", "CAR", [["2025", "Alex", "2-5", "2-5", 7, 7, 7.7, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 7.0, 0, 0], ["2026", "Winston", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["Cedric Tillman", "WR", "NO", [["2025", "Ekaansh", "1-0", "0-0", 1, 0, null, 1, 1], ["2025", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["CeeDee Lamb", "WR", "DAL", [["2025", "Winston", "2-5", "1-3", 7, 4, 15.1, 0, 0], ["2025", "Neil", "6-1", "5-1", 9, 8, 15.3, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 28.0, 0, 0]]], ["Chase Brown", "RB", "CIN", [["2025", "Safwan", "9-5", "7-1", 17, 11, 17.8, 1, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 14.5, 0, 0]]], ["Chase McLaughlin", "K", "TB", [["2025", "Shravan", "1-0", "1-0", 1, 1, 4.0, 1, 0], ["2025", "Rafael", "2-3", "2-2", 5, 4, 10.0, 0, 0], ["2025", "Mayank", "1-4", "1-4", 7, 7, 6.7, 0, 0], ["2026", "Winston", "2-1", "2-1", 3, 3, 10.9, 0, 0]]], ["Chicago Bears", "DEF", "CHI", [["2025", "Neil", "1-0", "1-0", 1, 1, 14.0, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 6.0, 1, 0], ["2025", "Safwan", "1-0", "1-0", 2, 2, 10.0, 1, 0], ["2026", "Winston", "0-1", "0-1", 1, 1, 7.0, 0, 0]]], ["Chimere Dike", "WR", "TEN", [["2025", "Mayank", "2-5", "1-0", 9, 1, 16.4, 0, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Chris Boswell", "K", "PIT", [["2025", "Koji", "1-3", "1-3", 4, 4, 8.8, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 8.0, 0, 0], ["2025", "Rafael", "1-4", "1-4", 5, 5, 6.0, 0, 0]]], ["Chris Godwin", "WR", "TB", [["2025", "Shravan", "5-6", "0-2", 11, 2, 5.6, 1, 0], ["2025", "Abhi", "1-0", "1-0", 3, 1, 10.5, 0, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Chris Moore", "WR", "BAL", [["2025", "Neil", "1-0", "1-0", 1, 1, 7.9, 1, 0]]], ["Chris Olave", "WR", "NO", [["2025", "Koji", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Ani", "5-6", "5-5", 13, 12, 17.0, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 22.5, 0, 0]]], ["Chris Rodriguez", "RB", "JAX", [["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "2-3", "0-0", 8, 0, null, 0, 0], ["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Christian Kirk", "WR", "SF", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Christian McCaffrey", "RB", "SF", [["2025", "Shravan", "7-7", "6-7", 16, 15, 25.1, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 18.5, 0, 0]]], ["Christian Watson", "WR", "GB", [["2025", "Ekaansh", "4-1", "1-0", 7, 3, 10.8, 1, 1], ["2026", "Safwan", "2-2", "1-2", 4, 3, 14.8, 0, 0]]], ["Chuba Hubbard", "RB", "CAR", [["2025", "Alex", "3-11", "2-6", 16, 8, 9.7, 0, 0], ["2026", "Koji", "3-1", "1-0", 4, 1, 25.9, 0, 0]]], ["Cincinnati Bengals", "DEF", "CIN", [["2025", "Neil", "1-0", "1-0", 1, 1, -4.0, 1, 0], ["2026", "Shravan", "0-1", "0-1", 1, 1, 3.0, 0, 0]]], ["Cleveland Browns", "DEF", "CLE", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 26.0, 1, 0], ["2025", "Neil", "2-0", "1-0", 2, 1, 5.0, 1, 0], ["2025", "Shravan", "2-1", "1-0", 3, 1, 2.0, 1, 0], ["2026", "Neil", "1-0", "1-0", 1, 1, 9.0, 0, 0]]], ["Colby Parkinson", "TE", "LAR", [["2025", "Winston", "0-0", "0-0", 1, 0, null, 0, 0]]], ["Colston Loveland", "TE", "CHI", [["2025", "Koji", "1-5", "1-3", 9, 6, 9.7, 0, 0], ["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Arnav", "2-2", "0-2", 4, 2, 0.7, 0, 0]]], ["Cooper Kupp", "WR", "SEA", [["2025", "Alex", "3-11", "3-6", 16, 9, 6.8, 0, 0]]], ["Courtland Sutton", "WR", "DEN", [["2025", "Safwan", "9-5", "6-5", 17, 13, 12.8, 1, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["D'Andre Swift", "RB", "CHI", [["2025", "Ekaansh", "11-3", "6-3", 16, 11, 14.9, 1, 1], ["2026", "Winston", "2-2", "2-2", 4, 4, 15.9, 0, 0]]], ["Dak Prescott", "QB", "DAL", [["2025", "Abhi", "7-7", "6-6", 16, 14, 19.2, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 20.3, 0, 0]]], ["Dallas Cowboys", "DEF", "DAL", [["2025", "Mayank", "2-1", "2-0", 3, 2, 0.0, 0, 0], ["2025", "Sathkrith", "1-1", "1-1", 2, 2, 6.5, 1, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 1.0, 0, 0]]], ["Dallas Goedert", "TE", "PHI", [["2025", "Shravan", "1-0", "1-0", 1, 1, 11.4, 1, 0], ["2025", "Koji", "1-1", "1-0", 2, 1, 10.3, 0, 0], ["2025", "Ani", "5-6", "3-5", 13, 8, 10.1, 1, 0], ["2026", "Ekaansh", "1-3", "1-1", 4, 2, 12.5, 0, 0]]], ["Dalton Kincaid", "TE", "BUF", [["2025", "Mayank", "4-10", "3-2", 16, 5, 13.2, 0, 0], ["2026", "Shravan", "2-2", "1-2", 4, 3, 9.3, 0, 0]]], ["Dalton Schultz", "TE", "HOU", [["2025", "Koji", "0-1", "0-1", 1, 1, 4.4, 0, 0], ["2025", "Winston", "1-0", "1-0", 1, 1, 11.1, 0, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 5.2, 1, 0], ["2025", "Mayank", "0-0", "0-0", 2, 2, 9.7, 0, 0], ["2026", "Ani", "3-0", "3-0", 3, 3, 11.6, 0, 0]]], ["Daniel Jones", "QB", "IND", [["2025", "Abhi", "6-7", "1-1", 13, 2, 14.4, 0, 0]]], ["Darius Slayton", "WR", "IND", [["2025", "Koji", "1-0", "1-0", 1, 1, 4.1, 0, 0], ["2025", "Rafael", "1-1", "0-1", 2, 1, 12.9, 0, 0]]], ["Darnell Mooney", "WR", "NYG", [["2025", "Alex", "1-4", "0-0", 5, 0, null, 0, 0], ["2025", "Shravan", "0-1", "0-1", 1, 1, 2.1, 1, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-3", "0-2", 5, 3, 9.1, 0, 0]]], ["Darren Waller", "TE", "CAR", [["2025", "Koji", "3-5", "2-1", 11, 4, 14.1, 0, 0], ["2026", "Ekaansh", "0-1", "0-1", 1, 1, 6.6, 0, 0]]], ["Davante Adams", "WR", "LAR", [["2025", "Koji", "5-9", "5-8", 17, 14, 15.9, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 18.2, 0, 0]]], ["David Montgomery", "RB", "HOU", [["2025", "Rafael", "6-8", "4-6", 16, 12, 10.8, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 11.1, 0, 0]]], ["David Njoku", "TE", "LAC", [["2025", "Mayank", "2-7", "0-4", 9, 4, 2.3, 0, 0], ["2026", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["David Sills", "WR", "TB", [["2025", "Sathkrith", "1-1", "0-1", 3, 1, 0.0, 1, 0]]], ["Davis Mills", "QB", "HOU", [["2025", "Ani", "0-1", "0-1", 1, 1, 14.5, 1, 0]]], ["Dawson Knox", "TE", "BUF", [["2025", "Mayank", "0-1", "0-1", 1, 1, 8.9, 0, 0]]], ["De'Von Achane", "RB", "MIA", [["2025", "Abhi", "5-6", "5-6", 11, 11, 21.4, 0, 0], ["2025", "Koji", "1-2", "1-1", 6, 5, 17.6, 0, 0], ["2026", "Shravan", "2-1", "2-1", 3, 3, 8.2, 0, 0]]], ["De'Zhaun Stribling", "WR", "SF", [["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Deebo Samuel", "WR", "SF", [["2025", "Safwan", "9-5", "5-3", 17, 9, 13.5, 1, 0], ["2026", "Ani", "3-1", "2-0", 4, 2, 10.9, 0, 0]]], ["Denver Broncos", "DEF", "DEN", [["2025", "Ani", "8-6", "6-2", 14, 8, 8.9, 1, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 5.0, 1, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Denzel Boston", "WR", "CLE", [["2026", "Ani", "2-0", "1-0", 2, 1, 12.9, 0, 0]]], ["Derrick Henry", "RB", "BAL", [["2025", "Abhi", "1-3", "1-3", 4, 4, 12.5, 0, 0], ["2025", "Shravan", "5-5", "4-5", 12, 11, 15.6, 1, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 22.7, 0, 0]]], ["Detroit Lions", "DEF", "DET", [["2025", "Winston", "0-1", "0-1", 1, 1, 9.0, 0, 0], ["2025", "Rafael", "2-3", "1-3", 5, 4, 10.2, 0, 0], ["2025", "Ani", "0-1", "0-1", 3, 1, 4.0, 1, 0], ["2026", "Arnav", "1-2", "1-2", 3, 3, 6.0, 0, 0]]], ["Devaughn Vele", "WR", "NO", [["2025", "Winston", "0-1", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "1-0", 4, 1, 6.9, 0, 0]]], ["Devin Neal", "RB", "MIN", [["2025", "Safwan", "2-0", "2-0", 4, 3, 11.8, 1, 0]]], ["Devin Singletary", "RB", "NYG", [["2025", "Sathkrith", "4-2", "0-0", 7, 0, null, 1, 0], ["2026", "Rafael", "1-1", "0-0", 2, 0, null, 0, 0]]], ["DeVonta Smith", "WR", "PHI", [["2025", "Safwan", "9-5", "5-2", 17, 10, 9.8, 1, 0], ["2026", "Koji", "3-1", "2-1", 4, 3, 16.2, 0, 0]]], ["DJ Moore", "WR", "BUF", [["2025", "Ekaansh", "11-3", "7-2", 14, 9, 9.1, 1, 1], ["2025", "Neil", "0-0", "0-0", 2, 0, null, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 9.1, 0, 0]]], ["DK Metcalf", "WR", "PIT", [["2025", "Abhi", "7-7", "6-7", 16, 15, 12.5, 0, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Dont'e Thornton", "WR", "LV", [["2025", "Ekaansh", "1-1", "0-0", 2, 0, null, 1, 1]]], ["Dontayvion Wicks", "WR", "PHI", [["2026", "Abhi", "0-3", "0-2", 3, 2, 5.0, 0, 0]]], ["Drake London", "WR", "ATL", [["2025", "Koji", "4-8", "3-7", 12, 10, 17.7, 0, 0], ["2025", "Sathkrith", "1-1", "0-0", 5, 2, 3.5, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 14.3, 0, 0]]], ["Drake Maye", "QB", "NE", [["2025", "Mayank", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Koji", "4-7", "4-5", 14, 11, 21.1, 0, 0], ["2026", "Mayank", "0-4", "0-3", 4, 3, 7.2, 0, 0]]], ["Dylan Sampson", "RB", "CLE", [["2025", "Rafael", "2-3", "0-0", 5, 0, null, 0, 0]]], ["Eddy Pineiro", "K", "SF", [["2025", "Koji", "2-4", "2-4", 6, 6, 9.2, 0, 0], ["2025", "Neil", "0-0", "0-0", 2, 2, 8.5, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 6.8, 0, 0]]], ["Elic Ayomanor", "WR", "TEN", [["2025", "Ani", "2-2", "1-0", 4, 1, 13.8, 1, 0], ["2025", "Safwan", "0-2", "0-0", 2, 0, null, 1, 0]]], ["Elijah Arroyo", "TE", "SEA", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Emanuel Wilson", "RB", "SEA", [["2025", "Ani", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Safwan", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "1-1", "0-1", 3, 1, 26.5, 0, 0], ["2026", "Mayank", "0-2", "0-2", 2, 2, 14.2, 0, 0]]], ["Emari Demercado", "RB", "DAL", [["2025", "Ekaansh", "2-0", "1-0", 2, 1, 6.1, 1, 1], ["2025", "Mayank", "0-1", "0-1", 1, 1, 4.0, 0, 0]]], ["Emeka Egbuka", "WR", "TB", [["2025", "Winston", "5-6", "5-4", 11, 9, 16.2, 0, 0], ["2025", "Koji", "1-2", "0-2", 6, 5, 6.0, 0, 0], ["2026", "Shravan", "2-2", "2-1", 4, 3, 8.3, 0, 0]]], ["Emmett Johnson", "RB", "KC", [["2026", "Shravan", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Evan Engram", "TE", "DEN", [["2025", "Neil", "4-1", "1-0", 5, 1, 5.1, 1, 0], ["2025", "Shravan", "0-1", "0-1", 1, 1, 7.6, 1, 0]]], ["Evan McPherson", "K", "CIN", [["2025", "Ekaansh", "3-1", "3-1", 4, 4, 5.0, 1, 1], ["2025", "Rafael", "0-1", "0-1", 2, 2, 2.0, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 8.0, 0, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 12.5, 0, 0]]], ["Garrett Wilson", "WR", "NYJ", [["2025", "Shravan", "7-7", "2-5", 16, 7, 14.2, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 15.8, 0, 0]]], ["George Holani", "RB", "SEA", [["2026", "Sathkrith", "1-0", "0-0", 1, 0, null, 0, 0]]], ["George Kittle", "TE", "SF", [["2025", "Rafael", "6-8", "2-6", 16, 10, 15.4, 0, 0], ["2026", "Safwan", "2-2", "2-1", 4, 3, 15.5, 0, 0]]], ["George Pickens", "WR", "DAL", [["2025", "Ekaansh", "11-3", "10-3", 16, 15, 18.9, 1, 1], ["2026", "Arnav", "2-2", "2-2", 4, 4, 10.1, 0, 0]]], ["Green Bay Packers", "DEF", "GB", [["2025", "Abhi", "3-2", "2-2", 5, 4, 4.0, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 5.0, 0, 0], ["2025", "Rafael", "1-2", "1-2", 3, 3, 9.3, 0, 0], ["2026", "Rafael", "2-1", "2-1", 3, 3, 3.7, 0, 0]]], ["Harold Fannin", "TE", "CLE", [["2025", "Ani", "8-6", "2-1", 16, 5, 14.2, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 12.6, 0, 0]]], ["Harrison Butker", "K", "KC", [["2025", "Mayank", "3-6", "3-6", 9, 9, 7.4, 0, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 6.0, 1, 0], ["2025", "Neil", "2-1", "2-1", 3, 3, 7.7, 1, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 8.8, 0, 0]]], ["Harrison Mevis", "K", "LAR", [["2026", "Abhi", "0-2", "0-2", 2, 2, 2.0, 0, 0]]], ["Hassan Haskins", "RB", "", [["2025", "Alex", "1-2", "0-1", 3, 1, 3.3, 0, 0]]], ["Houston Texans", "DEF", "HOU", [["2025", "Winston", "0-1", "0-1", 1, 1, 14.0, 0, 0], ["2025", "Safwan", "0-1", "0-1", 1, 1, 5.0, 1, 0], ["2025", "Ekaansh", "5-1", "2-1", 8, 4, 12.5, 1, 1], ["2026", "Ani", "3-1", "1-1", 4, 2, 6.0, 0, 0]]], ["Hunter Henry", "TE", "NE", [["2025", "Rafael", "3-2", "3-1", 5, 4, 6.5, 0, 0], ["2025", "Shravan", "4-3", "2-2", 9, 4, 11.6, 1, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 6.3, 0, 0]]], ["Hunter Renfrow", "WR", "", [["2025", "Sathkrith", "1-1", "0-0", 2, 0, null, 1, 0]]], ["Indianapolis Colts", "DEF", "IND", [["2025", "Winston", "2-1", "2-1", 3, 3, 9.3, 0, 0], ["2025", "Sathkrith", "0-1", "0-1", 1, 1, 6.0, 1, 0]]], ["Isaac TeSlaa", "WR", "DET", [["2025", "Rafael", "0-1", "0-0", 3, 0, null, 0, 0]]], ["Isaiah Bond", "WR", "CLE", [["2025", "Rafael", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Isaiah Davis", "RB", "NYJ", [["2025", "Rafael", "0-1", "0-1", 1, 1, 6.3, 0, 0], ["2025", "Koji", "0-2", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Isaiah Likely", "TE", "NYG", [["2025", "Shravan", "0-0", "0-0", 2, 2, 0.0, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0], ["2026", "Shravan", "0-2", "0-0", 2, 0, null, 0, 0]]], ["Isiah Pacheco", "RB", "DET", [["2025", "Ani", "3-0", "1-0", 3, 1, 4.8, 1, 0], ["2025", "Koji", "2-4", "1-1", 6, 2, 5.9, 0, 0], ["2025", "Shravan", "1-1", "0-0", 2, 0, null, 1, 0], ["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["J.J. McCarthy", "QB", "NYG", [["2025", "Ekaansh", "2-1", "0-0", 3, 0, null, 1, 1]]], ["J.K. Dobbins", "RB", "DEN", [["2025", "Shravan", "2-2", "1-1", 4, 2, 13.4, 1, 0], ["2025", "Abhi", "4-3", "4-1", 7, 5, 10.4, 0, 0], ["2026", "Mayank", "0-4", "0-2", 4, 2, 3.6, 0, 0]]], ["Ja'Kobi Lane", "WR", "BAL", [["2026", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Ja'Marr Chase", "WR", "CIN", [["2025", "Safwan", "9-5", "8-4", 17, 15, 19.3, 1, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 15.1, 0, 0]]], ["Jacksonville Jaguars", "DEF", "JAX", [["2025", "Rafael", "0-1", "0-1", 1, 1, 12.0, 0, 0], ["2025", "Abhi", "1-0", "1-0", 3, 3, 9.0, 0, 0], ["2025", "Winston", "0-2", "0-1", 2, 1, 16.0, 0, 0], ["2026", "Rafael", "1-0", "1-0", 1, 1, 15.0, 0, 0]]], ["Jacoby Brissett", "QB", "ARI", [["2025", "Winston", "0-3", "0-1", 6, 2, 15.1, 0, 0]]], ["Jacory Croskey-Merritt", "RB", "WAS", [["2025", "Shravan", "4-5", "1-1", 9, 2, 5.0, 1, 0], ["2025", "Safwan", "4-1", "1-1", 5, 2, 3.6, 1, 0], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Jadarian Price", "RB", "SEA", [["2026", "Rafael", "3-1", "2-1", 4, 3, 4.7, 0, 0]]], ["Jahmyr Gibbs", "RB", "DET", [["2025", "Ekaansh", "11-3", "11-2", 16, 15, 22.5, 1, 1], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 29.0, 0, 0]]], ["Jake Bates", "K", "DET", [["2025", "Ani", "4-3", "4-3", 7, 7, 7.7, 1, 0], ["2025", "Neil", "3-0", "3-0", 3, 3, 7.3, 1, 0], ["2025", "Rafael", "0-0", "0-0", 1, 1, 6.0, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 10.0, 0, 0]]], ["Jake Browning", "QB", "", [["2025", "Koji", "1-0", "1-0", 1, 1, 7.9, 0, 0], ["2025", "Mayank", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Jake Elliott", "K", "PHI", [["2025", "Neil", "8-2", "6-2", 10, 8, 6.5, 1, 0], ["2025", "Abhi", "1-0", "1-0", 1, 1, 2.0, 0, 0], ["2025", "Koji", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Jake Ferguson", "TE", "DAL", [["2025", "Ekaansh", "10-2", "8-2", 14, 12, 12.3, 1, 1], ["2026", "Koji", "3-1", "2-1", 4, 3, 10.7, 0, 0]]], ["Jake Tonges", "TE", "SF", [["2025", "Koji", "0-1", "0-1", 1, 1, 7.1, 0, 0]]], ["Jakobi Meyers", "WR", "JAX", [["2025", "Rafael", "6-8", "4-5", 16, 11, 12.2, 0, 0], ["2026", "Abhi", "0-4", "0-1", 4, 1, 3.8, 0, 0]]], ["Jalen Coker", "WR", "CAR", [["2025", "Koji", "1-0", "0-0", 2, 1, 7.7, 0, 0], ["2026", "Koji", "3-1", "0-1", 4, 1, 3.8, 0, 0]]], ["Jalen Hurts", "QB", "PHI", [["2025", "Neil", "11-3", "10-3", 16, 15, 18.8, 1, 0], ["2026", "Rafael", "3-1", "1-0", 4, 1, 24.7, 0, 0]]], ["Jalen McMillan", "WR", "TB", [["2025", "Winston", "0-2", "0-0", 5, 0, null, 0, 0], ["2026", "Koji", "2-1", "0-0", 3, 0, null, 0, 0]]], ["Jalen Nailor", "WR", "LV", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Jalen Tolbert", "WR", "MIA", [["2025", "Rafael", "2-1", "0-1", 3, 1, 0.0, 0, 0]]], ["James Conner", "RB", "ARI", [["2025", "Shravan", "2-1", "2-1", 3, 3, 11.1, 1, 0]]], ["James Cook", "RB", "BUF", [["2025", "Neil", "11-3", "10-3", 16, 15, 18.0, 1, 0], ["2026", "Ani", "3-1", "3-1", 4, 4, 16.6, 0, 0]]], ["Jameson Williams", "WR", "DET", [["2025", "Winston", "1-1", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "2-3", "0-1", 5, 1, 0.0, 1, 0], ["2025", "Shravan", "4-2", "2-1", 8, 5, 16.5, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 9.7, 0, 0]]], ["Jared Goff", "QB", "DET", [["2025", "Winston", "5-9", "3-5", 17, 8, 15.4, 0, 0], ["2026", "Winston", "2-2", "0-1", 4, 1, 16.4, 0, 0]]], ["Jason Myers", "K", "SEA", [["2025", "Ekaansh", "8-2", "8-1", 12, 11, 10.8, 1, 1], ["2026", "Rafael", "3-1", "3-1", 4, 4, 7.4, 0, 0]]], ["Jauan Jennings", "WR", "MIN", [["2025", "Abhi", "7-7", "3-2", 16, 7, 11.5, 0, 0], ["2026", "Sathkrith", "3-0", "0-0", 3, 0, null, 0, 0]]], ["Javonte Williams", "RB", "DAL", [["2025", "Safwan", "2-0", "1-0", 2, 1, 25.0, 1, 0], ["2025", "Winston", "4-5", "3-5", 9, 8, 15.1, 0, 0], ["2025", "Koji", "1-2", "1-2", 6, 6, 12.8, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 20.4, 0, 0]]], ["Jaxon Smith-Njigba", "WR", "SEA", [["2025", "Ani", "8-6", "7-6", 16, 15, 22.0, 1, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 29.2, 0, 0]]], ["Jaxson Dart", "QB", "NYG", [["2025", "Koji", "3-6", "0-1", 9, 1, 19.4, 0, 0], ["2025", "Sathkrith", "1-1", "1-0", 5, 4, 15.7, 1, 0], ["2026", "Safwan", "1-1", "1-1", 2, 2, 13.7, 0, 0]]], ["Jayden Daniels", "QB", "WAS", [["2025", "Rafael", "6-8", "2-5", 16, 7, 16.8, 0, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 16.2, 0, 0]]], ["Jayden Higgins", "WR", "HOU", [["2025", "Neil", "2-0", "0-0", 2, 0, null, 1, 0], ["2025", "Winston", "0-2", "0-0", 3, 0, null, 0, 0]]], ["Jayden Reed", "WR", "GB", [["2025", "Mayank", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Abhi", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Winston", "0-0", "0-0", 2, 1, 7.1, 0, 0], ["2026", "Ani", "1-1", "0-1", 2, 1, 5.0, 0, 0]]], ["Jaydon Blue", "RB", "PHI", [["2025", "Alex", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Jaylen Waddle", "WR", "DEN", [["2025", "Mayank", "4-10", "3-9", 16, 14, 12.3, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 11.0, 0, 0]]], ["Jaylen Warren", "RB", "PIT", [["2025", "Koji", "1-2", "0-0", 3, 0, null, 0, 0], ["2025", "Mayank", "2-9", "2-8", 13, 12, 12.5, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 14.1, 0, 0]]], ["Jaylen Wright", "RB", "MIA", [["2025", "Koji", "0-0", "0-0", 1, 0, null, 0, 0], ["2026", "Shravan", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Jaylin Noel", "WR", "HOU", [["2025", "Rafael", "1-0", "1-0", 1, 1, 11.3, 0, 0]]], ["Jeremiyah Love", "RB", "ARI", [["2026", "Abhi", "0-4", "0-4", 4, 4, 12.2, 0, 0]]], ["Jerome Ford", "RB", "", [["2025", "Ekaansh", "0-1", "0-0", 1, 0, null, 1, 1]]], ["Jerry Jeudy", "WR", "CLE", [["2025", "Winston", "2-3", "0-0", 5, 0, null, 0, 0], ["2025", "Ani", "1-1", "0-0", 2, 0, null, 1, 0], ["2025", "Neil", "1-0", "1-0", 1, 1, 5.1, 1, 0], ["2025", "Mayank", "1-2", "0-1", 3, 1, 2.9, 0, 0], ["2025", "Alex", "0-0", "0-0", 2, 0, null, 0, 0]]], ["Joe Burrow", "QB", "CIN", [["2025", "Koji", "5-7", "0-3", 15, 4, 12.2, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 19.2, 0, 0]]], ["Joe Flacco", "QB", "CIN", [["2025", "Winston", "3-1", "1-0", 4, 1, 24.3, 0, 0]]], ["Joe Mixon", "RB", "", [["2025", "Mayank", "4-10", "0-0", 16, 0, null, 0, 0]]], ["John Metchie", "WR", "CAR", [["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-1", "0-1", 3, 1, 7.4, 0, 0]]], ["Jonathan Taylor", "RB", "IND", [["2025", "Koji", "4-7", "4-6", 11, 10, 27.4, 0, 0], ["2025", "Winston", "0-3", "0-3", 6, 6, 13.8, 0, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 21.6, 0, 0]]], ["Jonathon Brooks", "RB", "CAR", [["2026", "Winston", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Jonnu Smith", "TE", "GB", [["2025", "Shravan", "1-1", "0-1", 2, 1, 6.7, 1, 0]]], ["Jordan Addison", "WR", "MIN", [["2025", "Alex", "3-11", "2-7", 16, 11, 9.9, 0, 0], ["2026", "Arnav", "2-2", "1-0", 4, 1, 20.0, 0, 0]]], ["Jordan Love", "QB", "GB", [["2025", "Neil", "4-2", "0-0", 6, 0, null, 1, 0], ["2025", "Mayank", "1-3", "1-0", 4, 1, 28.3, 0, 0], ["2025", "Ekaansh", "2-0", "1-0", 4, 2, 12.0, 1, 1], ["2026", "Mayank", "0-4", "0-1", 4, 1, 13.1, 0, 0]]], ["Jordan Mason", "RB", "MIN", [["2025", "Koji", "4-6", "3-3", 10, 6, 10.6, 0, 0], ["2026", "Ani", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Jordyn Tyson", "WR", "NO", [["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Josh Allen", "QB", "BUF", [["2025", "Shravan", "7-7", "6-7", 16, 15, 23.4, 1, 0], ["2026", "Abhi", "0-4", "0-4", 4, 4, 28.1, 0, 0]]], ["Josh Downs", "WR", "IND", [["2025", "Rafael", "2-1", "0-0", 3, 0, null, 0, 0], ["2025", "Alex", "2-6", "0-4", 10, 6, 8.9, 0, 0], ["2026", "Winston", "2-2", "1-2", 4, 3, 7.7, 0, 0]]], ["Josh Jacobs", "RB", "GB", [["2025", "Neil", "11-3", "10-2", 16, 14, 15.3, 1, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Josh Reynolds", "WR", "", [["2025", "Shravan", "1-0", "1-0", 1, 1, 5.9, 1, 0]]], ["Joshua Karty", "K", "", [["2025", "Koji", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["JuJu Smith-Schuster", "WR", "", [["2025", "Abhi", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Shravan", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Justice Hill", "RB", "BAL", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Mayank", "1-5", "0-1", 6, 1, 2.2, 0, 0]]], ["Justin Fields", "QB", "KC", [["2025", "Winston", "2-4", "1-2", 6, 3, 11.6, 0, 0], ["2025", "Neil", "1-0", "0-0", 1, 0, null, 1, 0]]], ["Justin Herbert", "QB", "LAC", [["2025", "Ani", "8-6", "8-5", 16, 15, 18.9, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 10.9, 0, 0]]], ["Justin Jefferson", "WR", "MIN", [["2025", "Sathkrith", "8-6", "8-5", 17, 16, 11.4, 1, 0], ["2026", "Koji", "3-1", "2-1", 4, 3, 15.0, 0, 0]]], ["Juwan Johnson", "TE", "NO", [["2025", "Shravan", "2-4", "1-2", 6, 3, 6.9, 1, 0], ["2025", "Safwan", "4-1", "1-0", 8, 1, 10.6, 1, 0], ["2026", "Abhi", "0-4", "0-1", 4, 1, 11.9, 0, 0]]], ["Ka'imi Fairbairn", "K", "HOU", [["2025", "Sathkrith", "8-6", "7-4", 17, 14, 11.7, 1, 0], ["2026", "Safwan", "2-2", "2-2", 4, 4, 9.8, 0, 0]]], ["Kaelon Black", "RB", "SF", [["2026", "Arnav", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Kaleb Johnson", "RB", "GB", [["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Ani", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Kalif Raymond", "WR", "CHI", [["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Kansas City Chiefs", "DEF", "KC", [["2025", "Sathkrith", "0-1", "0-1", 3, 2, 3.5, 1, 0], ["2025", "Winston", "2-2", "1-2", 4, 3, 9.0, 0, 0], ["2025", "Mayank", "1-1", "1-1", 2, 2, 6.5, 0, 0], ["2026", "Winston", "0-1", "0-1", 1, 1, 13.0, 0, 0], ["2026", "Abhi", "0-2", "0-2", 2, 2, 6.5, 0, 0]]], ["Kareem Hunt", "RB", "", [["2025", "Abhi", "3-3", "0-0", 6, 0, null, 0, 0], ["2025", "Koji", "2-3", "0-3", 5, 3, 15.2, 0, 0]]], ["KaVontae Turpin", "WR", "DAL", [["2025", "Ani", "0-1", "0-0", 1, 0, null, 1, 0]]], ["Kayshon Boutte", "WR", "HOU", [["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2025", "Neil", "7-1", "1-0", 10, 1, 13.5, 1, 0], ["2026", "Sathkrith", "3-0", "0-0", 3, 0, null, 0, 0]]], ["KC Concepcion", "WR", "CLE", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Winston", "2-1", "0-0", 3, 0, null, 0, 0]]], ["Keaton Mitchell", "RB", "LAC", [["2026", "Safwan", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Keenan Allen", "WR", "IND", [["2025", "Shravan", "3-2", "0-2", 7, 2, 12.9, 1, 0], ["2025", "Abhi", "5-4", "4-2", 9, 6, 10.8, 0, 0], ["2026", "Safwan", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Sathkrith", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Kendre Miller", "RB", "NO", [["2025", "Ekaansh", "2-0", "0-0", 2, 0, null, 1, 1]]], ["Kendrick Bourne", "WR", "ARI", [["2025", "Shravan", "2-4", "2-0", 6, 2, 4.4, 1, 0]]], ["Kenneth Walker", "RB", "KC", [["2025", "Ani", "8-6", "4-2", 16, 6, 11.3, 1, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 27.5, 0, 0]]], ["Kenny Gainwell", "RB", "TB", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Neil", "4-2", "0-0", 6, 0, null, 1, 0], ["2025", "Safwan", "4-1", "2-1", 8, 5, 11.5, 1, 0], ["2026", "Safwan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Kenyon Sadiq", "TE", "NYJ", [["2026", "Koji", "1-0", "1-0", 1, 1, 0.0, 0, 0]]], ["Keon Coleman", "WR", "BUF", [["2025", "Abhi", "6-6", "0-3", 12, 3, 6.0, 0, 0], ["2026", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Khalil Shakir", "WR", "BUF", [["2025", "Ani", "8-6", "2-0", 16, 2, 15.2, 1, 0], ["2026", "Ekaansh", "1-3", "0-2", 4, 2, 4.2, 0, 0]]], ["Kimani Vidal", "RB", "LAC", [["2025", "Rafael", "3-3", "2-3", 6, 5, 10.2, 0, 0], ["2025", "Winston", "0-2", "0-2", 4, 4, 9.8, 0, 0]]], ["Kyle Monangai", "RB", "CHI", [["2025", "Safwan", "1-1", "0-0", 2, 0, null, 1, 0], ["2025", "Abhi", "2-4", "1-1", 8, 2, 15.8, 0, 0], ["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Kyle Pitts", "TE", "ATL", [["2025", "Neil", "11-3", "9-2", 16, 13, 9.8, 1, 0], ["2026", "Ani", "3-1", "0-1", 4, 1, 0.0, 0, 0]]], ["Kyle Williams", "WR", "NE", [["2025", "Safwan", "2-0", "0-0", 2, 0, null, 1, 0]]], ["Kyler Murray", "QB", "MIN", [["2025", "Ekaansh", "7-2", "2-1", 9, 3, 16.2, 1, 1], ["2026", "Koji", "3-1", "1-1", 4, 2, 10.9, 0, 0]]], ["Kyren Williams", "RB", "LAR", [["2025", "Winston", "5-6", "4-6", 11, 10, 16.6, 0, 0], ["2025", "Abhi", "2-1", "2-1", 5, 5, 14.0, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 22.4, 0, 0]]], ["Ladd McConkey", "WR", "LAC", [["2025", "Ani", "8-6", "7-4", 16, 13, 12.3, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 9.1, 0, 0]]], ["Lamar Jackson", "QB", "BAL", [["2025", "Mayank", "4-10", "3-7", 16, 12, 15.4, 0, 0], ["2026", "Shravan", "2-2", "2-2", 4, 4, 19.8, 0, 0]]], ["Las Vegas Raiders", "DEF", "LV", [["2025", "Neil", "1-0", "1-0", 1, 1, 17.0, 1, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 6.0, 0, 0], ["2026", "Neil", "0-1", "0-1", 1, 1, 15.0, 0, 0]]], ["Los Angeles Chargers", "DEF", "LAC", [["2025", "Sathkrith", "1-0", "1-0", 1, 1, 7.0, 1, 0], ["2025", "Abhi", "0-2", "0-2", 2, 2, 9.0, 0, 0], ["2025", "Ani", "0-1", "0-1", 1, 1, -2.0, 1, 0], ["2025", "Shravan", "1-1", "0-1", 2, 1, 9.0, 1, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 6.0, 0, 0], ["2026", "Safwan", "1-0", "1-0", 1, 1, 1.0, 0, 0], ["2026", "Winston", "1-0", "1-0", 1, 1, 5.0, 0, 0]]], ["Los Angeles Rams", "DEF", "LAR", [["2025", "Sathkrith", "0-2", "0-2", 2, 2, 7.5, 1, 0], ["2025", "Ekaansh", "1-0", "1-0", 1, 1, 1.0, 1, 1], ["2025", "Rafael", "1-1", "1-1", 2, 2, 15.5, 0, 0], ["2025", "Safwan", "4-2", "4-1", 6, 5, 9.4, 1, 0], ["2025", "Alex", "0-1", "0-1", 3, 3, 7.0, 0, 0], ["2026", "Sathkrith", "4-0", "4-0", 4, 4, 6.0, 0, 0]]], ["Luke McCaffrey", "WR", "WAS", [["2025", "Safwan", "0-1", "0-0", 1, 0, null, 1, 0], ["2025", "Rafael", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Luther Burden", "WR", "CHI", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Koji", "0-2", "0-1", 5, 2, 19.4, 0, 0], ["2026", "Rafael", "3-1", "2-1", 4, 3, 9.0, 0, 0]]], ["Mack Hollins", "WR", "NE", [["2025", "Rafael", "1-1", "1-0", 2, 1, 10.4, 0, 0]]], ["Makai Lemon", "WR", "PHI", [["2026", "Shravan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Malachi Fields", "WR", "NYG", [["2026", "Neil", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Malik Davis", "RB", "DAL", [["2026", "Rafael", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Malik Nabers", "WR", "NYG", [["2025", "Abhi", "5-5", "1-3", 12, 4, 14.3, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 11.2, 0, 0]]], ["Malik Washington", "WR", "MIA", [["2025", "Sathkrith", "1-1", "0-0", 2, 0, null, 1, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Malik Willis", "QB", "MIA", [["2026", "Neil", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Marcus Mariota", "QB", "WAS", [["2025", "Rafael", "4-2", "3-1", 6, 4, 17.2, 0, 0], ["2025", "Safwan", "0-0", "0-0", 2, 1, 14.7, 1, 0]]], ["Mark Andrews", "TE", "BAL", [["2025", "Abhi", "7-7", "5-2", 16, 9, 4.3, 0, 0], ["2026", "Safwan", "2-2", "0-1", 4, 1, 10.9, 0, 0]]], ["Marquise Brown", "WR", "PHI", [["2025", "Ekaansh", "7-1", "3-0", 10, 3, 8.3, 1, 1]]], ["MarShawn Lloyd", "RB", "GB", [["2026", "Rafael", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Marvin Harrison", "WR", "ARI", [["2025", "Winston", "2-5", "2-5", 7, 7, 10.8, 0, 0], ["2025", "Neil", "6-1", "2-0", 9, 2, 18.5, 1, 0], ["2026", "Ekaansh", "1-3", "1-0", 4, 1, 4.3, 0, 0]]], ["Marvin Mims", "WR", "DEN", [["2025", "Neil", "2-0", "0-0", 2, 0, null, 1, 0]]], ["Mason Taylor", "TE", "NYJ", [["2025", "Safwan", "0-3", "0-3", 3, 3, 7.2, 1, 0]]], ["Matt Gay", "K", "LV", [["2025", "Sathkrith", "0-1", "0-1", 1, 1, 7.0, 1, 0]]], ["Matt Prater", "K", "", [["2025", "Shravan", "1-2", "1-1", 3, 2, 10.5, 1, 0], ["2025", "Alex", "0-1", "0-1", 1, 1, 2.0, 0, 0], ["2025", "Safwan", "1-1", "0-1", 2, 1, 1.0, 1, 0]]], ["Matthew Golden", "WR", "GB", [["2025", "Alex", "3-11", "0-2", 14, 2, 3.1, 0, 0], ["2026", "Neil", "1-1", "0-0", 2, 0, null, 0, 0], ["2026", "Shravan", "0-2", "0-2", 2, 2, 16.4, 0, 0]]], ["Matthew Stafford", "QB", "LAR", [["2025", "Mayank", "1-6", "0-3", 7, 3, 20.8, 0, 0], ["2025", "Winston", "0-2", "0-1", 5, 3, 17.1, 0, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Matthew Wright", "K", "", [["2025", "Sathkrith", "0-1", "0-1", 1, 1, 4.0, 1, 0]]], ["Miami Dolphins", "DEF", "MIA", [["2025", "Neil", "3-1", "3-1", 4, 4, 6.5, 1, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 2.0, 1, 0], ["2025", "Sathkrith", "2-1", "1-1", 3, 2, 13.5, 1, 0]]], ["Michael Badgley", "K", "", [["2025", "Shravan", "1-1", "1-1", 2, 2, 6.5, 1, 0], ["2025", "Koji", "1-0", "1-0", 1, 1, 4.0, 0, 0]]], ["Michael Carter", "RB", "TEN", [["2025", "Neil", "1-1", "0-1", 2, 1, 18.3, 1, 0], ["2025", "Alex", "1-1", "1-1", 4, 2, 8.2, 0, 0]]], ["Michael Mayer", "TE", "LV", [["2025", "Safwan", "1-0", "0-0", 2, 0, null, 1, 0], ["2025", "Shravan", "1-0", "1-0", 1, 1, 2.0, 1, 0], ["2026", "Shravan", "1-0", "1-0", 1, 1, 9.2, 0, 0]]], ["Michael Pittman", "WR", "PIT", [["2025", "Mayank", "3-8", "2-3", 11, 5, 12.0, 0, 0], ["2025", "Winston", "0-3", "0-3", 6, 6, 8.2, 0, 0], ["2026", "Koji", "3-1", "0-0", 4, 0, null, 0, 0]]], ["Michael Wilson", "WR", "ARI", [["2025", "Shravan", "3-1", "1-1", 6, 4, 18.4, 1, 0], ["2026", "Shravan", "2-2", "0-1", 4, 1, 16.5, 0, 0]]], ["Mike Evans", "WR", "SF", [["2025", "Sathkrith", "6-5", "1-3", 11, 4, 8.5, 1, 0], ["2025", "Neil", "0-1", "0-0", 3, 0, null, 1, 0], ["2026", "Shravan", "2-2", "1-1", 4, 2, 14.6, 0, 0]]], ["Mike Gesicki", "TE", "CIN", [["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Mike Washington", "RB", "LV", [["2026", "Safwan", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Minnesota Vikings", "DEF", "MIN", [["2025", "Koji", "2-3", "2-3", 5, 5, 11.0, 0, 0], ["2025", "Winston", "0-0", "0-0", 1, 1, 11.0, 0, 0], ["2026", "Koji", "3-1", "3-1", 4, 4, 13.5, 0, 0]]], ["Najee Harris", "RB", "NYG", [["2025", "Sathkrith", "0-2", "0-0", 2, 0, null, 1, 0]]], ["New England Patriots", "DEF", "NE", [["2025", "Winston", "1-0", "1-0", 1, 1, 7.0, 0, 0], ["2025", "Koji", "1-2", "1-2", 3, 3, 12.0, 0, 0], ["2025", "Ekaansh", "5-1", "3-0", 8, 4, 7.5, 1, 1], ["2026", "Ani", "1-0", "1-0", 1, 1, 23.0, 0, 0]]], ["New Orleans Saints", "DEF", "NO", [["2025", "Mayank", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Shravan", "0-0", "0-0", 2, 2, 12.0, 1, 0], ["2026", "Shravan", "0-1", "0-1", 1, 1, -3.0, 0, 0]]], ["New York Giants", "DEF", "NYG", [["2025", "Sathkrith", "0-0", "0-0", 2, 0, null, 1, 0], ["2026", "Neil", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["New York Jets", "DEF", "NYJ", [["2025", "Mayank", "0-2", "0-2", 2, 2, 10.0, 0, 0]]], ["Nick Chubb", "RB", "", [["2025", "Mayank", "2-3", "2-1", 5, 3, 9.4, 0, 0], ["2025", "Alex", "1-5", "1-3", 6, 4, 3.8, 0, 0]]], ["Nick Folk", "K", "ATL", [["2025", "Koji", "0-1", "0-1", 1, 1, 5.0, 0, 0]]], ["Nico Collins", "WR", "HOU", [["2025", "Mayank", "4-10", "3-7", 16, 12, 13.8, 0, 0], ["2026", "Winston", "2-2", "0-2", 4, 2, 26.0, 0, 0]]], ["Noah Fant", "TE", "NO", [["2025", "Ani", "1-0", "1-0", 1, 1, 10.8, 1, 0]]], ["Ollie Gordon", "RB", "MIA", [["2025", "Safwan", "2-0", "0-0", 2, 0, null, 1, 0], ["2026", "Arnav", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Omarion Hampton", "RB", "LAC", [["2025", "Alex", "3-11", "1-5", 16, 8, 16.0, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 11.2, 0, 0]]], ["Oronde Gadsden", "TE", "LAC", [["2025", "Mayank", "1-4", "1-3", 5, 4, 10.2, 0, 0], ["2025", "Abhi", "2-1", "0-0", 5, 0, null, 0, 0], ["2026", "Ekaansh", "1-1", "0-1", 2, 1, 0.0, 0, 0]]], ["Parker Washington", "WR", "JAX", [["2025", "Rafael", "0-2", "0-0", 2, 0, null, 0, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 12.8, 0, 0]]], ["Patrick Mahomes", "QB", "KC", [["2025", "Alex", "3-11", "3-10", 14, 13, 21.7, 0, 0], ["2026", "Winston", "2-2", "2-1", 4, 3, 20.6, 0, 0]]], ["Philadelphia Eagles", "DEF", "PHI", [["2025", "Shravan", "2-4", "2-4", 6, 6, 7.0, 1, 0], ["2025", "Rafael", "1-0", "1-0", 1, 1, 6.0, 0, 0], ["2025", "Ani", "1-1", "0-0", 4, 2, 10.5, 1, 0], ["2026", "Shravan", "2-0", "2-0", 2, 2, 4.0, 0, 0]]], ["Pittsburgh Steelers", "DEF", "PIT", [["2025", "Ekaansh", "6-2", "5-2", 8, 7, 6.7, 1, 1], ["2025", "Sathkrith", "1-0", "1-0", 3, 2, 11.0, 1, 0], ["2025", "Abhi", "1-0", "1-0", 1, 1, 4.0, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 10.8, 0, 0]]], ["Puka Nacua", "WR", "LAR", [["2025", "Neil", "5-2", "4-2", 7, 6, 23.1, 1, 0], ["2025", "Winston", "3-4", "2-4", 10, 9, 23.4, 0, 0], ["2026", "Arnav", "2-2", "1-2", 4, 3, 13.4, 0, 0]]], ["Quentin Johnston", "WR", "LAC", [["2025", "Sathkrith", "8-5", "2-2", 16, 4, 8.4, 1, 0], ["2026", "Abhi", "0-2", "0-1", 2, 1, 3.7, 0, 0]]], ["Quinshon Judkins", "RB", "CLE", [["2025", "Sathkrith", "8-6", "6-3", 17, 11, 12.5, 1, 0], ["2026", "Sathkrith", "4-0", "3-0", 4, 3, 13.8, 0, 0]]], ["Rachaad White", "RB", "WAS", [["2025", "Safwan", "4-4", "1-3", 8, 4, 14.3, 1, 0], ["2025", "Shravan", "2-1", "1-1", 3, 2, 9.3, 1, 0], ["2026", "Winston", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Raheem Mostert", "RB", "", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Rashee Rice", "WR", "KC", [["2025", "Ekaansh", "11-3", "5-2", 16, 7, 19.7, 1, 1], ["2026", "Shravan", "2-0", "2-0", 2, 2, 11.1, 0, 0], ["2026", "Neil", "1-1", "1-1", 2, 2, 7.9, 0, 0]]], ["Rashid Shaheed", "WR", "SEA", [["2025", "Sathkrith", "8-6", "0-0", 17, 2, 5.5, 1, 0], ["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Ray Davis", "RB", "BUF", [["2025", "Ekaansh", "3-1", "0-0", 4, 0, null, 1, 1]]], ["Rhamondre Stevenson", "RB", "NE", [["2025", "Ekaansh", "0-1", "0-0", 1, 0, null, 1, 1], ["2025", "Neil", "7-2", "2-0", 9, 2, 11.4, 1, 0], ["2025", "Shravan", "2-1", "0-0", 5, 0, null, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 16.4, 0, 0]]], ["Ricky Pearsall", "WR", "SF", [["2025", "Rafael", "6-8", "3-1", 16, 4, 13.1, 0, 0]]], ["Rico Dowdle", "RB", "PIT", [["2025", "Ani", "5-5", "4-4", 12, 9, 15.3, 1, 0], ["2026", "Ekaansh", "1-3", "0-0", 4, 0, null, 0, 0]]], ["Riley Patterson", "K", "MIA", [["2025", "Ani", "0-1", "0-1", 1, 1, 11.0, 1, 0]]], ["RJ Harvey", "RB", "DEN", [["2025", "Winston", "5-6", "4-1", 11, 5, 5.8, 0, 0], ["2025", "Mayank", "1-2", "1-1", 5, 4, 21.0, 0, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Rome Odunze", "WR", "CHI", [["2025", "Rafael", "6-8", "6-5", 16, 12, 10.9, 0, 0], ["2026", "Sathkrith", "4-0", "2-0", 4, 2, 7.2, 0, 0]]], ["Romeo Doubs", "WR", "NE", [["2025", "Winston", "4-6", "1-0", 10, 1, 9.4, 0, 0], ["2025", "Mayank", "1-2", "0-0", 5, 0, null, 0, 0], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Roschon Johnson", "RB", "CHI", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0], ["2026", "Rafael", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Russell Wilson", "QB", "", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Sam Darnold", "QB", "SEA", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Winston", "0-2", "0-0", 2, 0, null, 0, 0], ["2025", "Safwan", "5-2", "2-0", 10, 2, 22.9, 1, 0]]], ["Sam LaPorta", "TE", "DET", [["2025", "Ani", "3-0", "3-0", 3, 3, 8.9, 1, 0], ["2025", "Koji", "3-5", "1-3", 8, 4, 10.9, 0, 0], ["2026", "Neil", "2-2", "2-2", 4, 4, 14.2, 0, 0]]], ["San Francisco 49ers", "DEF", "SF", [["2025", "Rafael", "1-0", "1-0", 1, 1, 7.0, 0, 0], ["2025", "Alex", "1-2", "1-2", 3, 3, 3.0, 0, 0], ["2025", "Neil", "4-0", "4-0", 4, 4, 7.5, 1, 0], ["2025", "Sathkrith", "0-1", "0-0", 2, 1, 0.0, 1, 0], ["2026", "Safwan", "1-1", "1-1", 2, 2, 5.0, 0, 0], ["2026", "Arnav", "1-0", "1-0", 1, 1, 5.0, 0, 0]]], ["Saquon Barkley", "RB", "PHI", [["2025", "Ani", "8-6", "7-6", 16, 15, 15.0, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 5.8, 0, 0]]], ["Sean Tucker", "RB", "TB", [["2025", "Alex", "1-4", "0-2", 5, 2, 5.7, 0, 0], ["2025", "Winston", "0-1", "0-1", 1, 1, 5.6, 0, 0]]], ["Seattle Seahawks", "DEF", "SEA", [["2025", "Safwan", "4-3", "4-3", 7, 7, 9.4, 1, 0], ["2025", "Koji", "2-4", "2-4", 9, 9, 12.0, 0, 0], ["2026", "Mayank", "0-4", "0-4", 4, 4, 8.8, 0, 0]]], ["Spencer Shrader", "K", "IND", [["2025", "Shravan", "1-2", "0-2", 3, 2, 6.0, 1, 0], ["2026", "Abhi", "0-1", "0-1", 1, 1, 17.4, 0, 0]]], ["Stefon Diggs", "WR", "WAS", [["2025", "Sathkrith", "7-5", "3-2", 12, 5, 12.8, 1, 0], ["2025", "Koji", "1-1", "1-0", 5, 4, 14.0, 0, 0], ["2026", "Neil", "2-2", "1-0", 4, 1, 21.7, 0, 0]]], ["T.J. Hockenson", "TE", "MIN", [["2025", "Ekaansh", "11-3", "3-1", 14, 4, 4.7, 1, 1]]], ["Tampa Bay Buccaneers", "DEF", "TB", [["2025", "Rafael", "1-0", "1-0", 1, 1, 15.0, 0, 0], ["2025", "Shravan", "1-1", "0-1", 2, 1, 28.0, 1, 0], ["2025", "Mayank", "1-2", "1-2", 5, 5, 3.6, 0, 0], ["2026", "Neil", "1-0", "1-0", 1, 1, 2.0, 0, 0]]], ["Tank Bigsby", "RB", "PHI", [["2025", "Abhi", "1-0", "0-0", 1, 0, null, 0, 0], ["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tank Dell", "WR", "HOU", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Taysom Hill", "TE", "", [["2025", "Safwan", "0-0", "0-0", 1, 1, 0.0, 1, 0]]], ["Tee Higgins", "WR", "CIN", [["2025", "Shravan", "7-7", "6-2", 16, 9, 16.9, 1, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 17.8, 0, 0]]], ["Tennessee Titans", "DEF", "TEN", [["2025", "Winston", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["Terrance Ferguson", "TE", "LAR", [["2026", "Safwan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Terry McLaurin", "WR", "WAS", [["2025", "Neil", "11-3", "4-2", 16, 8, 11.1, 1, 0], ["2026", "Koji", "3-1", "2-0", 4, 2, 5.2, 0, 0]]], ["Tetairoa McMillan", "WR", "CAR", [["2025", "Sathkrith", "8-6", "8-5", 17, 14, 12.9, 1, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 18.6, 0, 0]]], ["Tez Johnson", "WR", "TB", [["2025", "Sathkrith", "6-2", "0-0", 8, 0, null, 1, 0]]], ["Theo Johnson", "TE", "NYG", [["2025", "Alex", "1-4", "0-1", 7, 1, 14.5, 0, 0]]], ["Tony Pollard", "RB", "TEN", [["2025", "Safwan", "7-5", "3-1", 12, 4, 10.0, 1, 0], ["2025", "Rafael", "0-1", "0-1", 1, 1, 5.3, 0, 0], ["2025", "Shravan", "1-0", "1-0", 3, 1, 28.1, 1, 0], ["2026", "Winston", "2-2", "2-0", 4, 2, 10.6, 0, 0]]], ["Tory Horton", "WR", "SEA", [["2025", "Ani", "2-0", "0-0", 2, 0, null, 1, 0], ["2025", "Abhi", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Travis Etienne", "RB", "NO", [["2025", "Neil", "11-3", "9-3", 16, 14, 14.2, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 10.9, 0, 0]]], ["Travis Hunter", "DB", "JAX", [["2025", "Neil", "11-2", "2-1", 13, 3, 8.1, 1, 0], ["2026", "Mayank", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Travis Kelce", "TE", "KC", [["2025", "Alex", "3-11", "3-10", 16, 15, 11.7, 0, 0], ["2026", "Arnav", "2-2", "2-0", 4, 2, 8.7, 0, 0]]], ["Tre Tucker", "WR", "LV", [["2025", "Winston", "3-4", "1-3", 7, 4, 6.2, 0, 0], ["2025", "Koji", "0-1", "0-1", 1, 1, 14.7, 0, 0], ["2025", "Neil", "2-1", "1-0", 5, 1, 5.8, 1, 0], ["2026", "Rafael", "2-0", "0-0", 2, 0, null, 0, 0]]], ["Tre' Harris", "WR", "LAC", [["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["TreVeyon Henderson", "RB", "NE", [["2025", "Sathkrith", "8-6", "4-3", 17, 10, 13.3, 1, 0], ["2026", "Neil", "2-2", "1-1", 4, 2, 4.0, 0, 0]]], ["Trevor Lawrence", "QB", "JAX", [["2025", "Neil", "3-0", "1-0", 3, 1, 22.2, 1, 0], ["2025", "Sathkrith", "1-0", "1-0", 1, 1, 20.1, 1, 0], ["2025", "Rafael", "0-2", "0-1", 4, 3, 32.4, 0, 0], ["2026", "Arnav", "2-2", "2-2", 4, 4, 16.3, 0, 0]]], ["Trey Benson", "RB", "ARI", [["2025", "Rafael", "6-7", "1-0", 13, 1, 10.4, 0, 0]]], ["Trey McBride", "TE", "ARI", [["2025", "Sathkrith", "8-6", "7-6", 17, 16, 18.9, 1, 0], ["2026", "Rafael", "3-1", "3-1", 4, 4, 17.3, 0, 0]]], ["Trey Smack", "K", "GB", [["2026", "Abhi", "0-1", "0-1", 1, 1, 1.0, 0, 0]]], ["Troy Franklin", "WR", "DEN", [["2025", "Alex", "1-3", "0-2", 4, 2, 5.8, 0, 0], ["2025", "Koji", "2-5", "2-1", 10, 3, 15.3, 0, 0]]], ["Tucker Kraft", "TE", "GB", [["2025", "Abhi", "4-5", "2-4", 9, 6, 13.8, 0, 0], ["2026", "Abhi", "0-4", "0-3", 4, 3, 6.5, 0, 0]]], ["Ty Johnson", "RB", "BUF", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tyjae Spears", "RB", "TEN", [["2025", "Sathkrith", "2-4", "0-0", 6, 0, null, 1, 0], ["2025", "Winston", "3-4", "1-1", 9, 3, 9.2, 0, 0], ["2026", "Ani", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Tyler Allgeier", "RB", "ARI", [["2025", "Winston", "0-1", "0-0", 1, 0, null, 0, 0], ["2025", "Ekaansh", "5-2", "0-1", 7, 1, 9.4, 1, 1], ["2026", "Sathkrith", "4-0", "0-0", 4, 0, null, 0, 0]]], ["Tyler Higbee", "TE", "LAR", [["2026", "Ekaansh", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Tyler Lockett", "WR", "", [["2025", "Ekaansh", "0-0", "0-0", 1, 0, null, 1, 1]]], ["Tyler Loop", "K", "BAL", [["2025", "Winston", "5-9", "5-8", 16, 15, 8.1, 0, 0], ["2026", "Ekaansh", "1-3", "1-3", 4, 4, 10.5, 0, 0]]], ["Tyler Shough", "QB", "NO", [["2025", "Safwan", "0-0", "0-0", 1, 1, 21.9, 1, 0], ["2026", "Safwan", "2-2", "1-1", 4, 2, 19.9, 0, 0]]], ["Tyler Warren", "TE", "IND", [["2025", "Winston", "5-9", "4-9", 17, 16, 11.3, 0, 0], ["2026", "Winston", "2-2", "2-2", 4, 4, 12.1, 0, 0]]], ["Tyquan Thornton", "WR", "KC", [["2025", "Mayank", "1-4", "0-0", 5, 0, null, 0, 0]]], ["Tyreek Hill", "WR", "", [["2025", "Alex", "1-4", "1-3", 5, 4, 13.4, 0, 0], ["2026", "Safwan", "1-2", "0-0", 3, 0, null, 0, 0]]], ["Tyrod Taylor", "QB", "GB", [["2025", "Mayank", "1-0", "0-0", 3, 0, null, 0, 0]]], ["Tyrone Tracy", "RB", "NYG", [["2025", "Shravan", "2-4", "1-0", 6, 1, 5.5, 1, 0], ["2025", "Alex", "1-5", "1-4", 8, 7, 9.9, 0, 0], ["2026", "Arnav", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Wan'Dale Robinson", "WR", "TEN", [["2025", "Ekaansh", "2-0", "0-0", 2, 0, null, 1, 1], ["2025", "Abhi", "6-4", "4-4", 12, 10, 12.8, 0, 0], ["2026", "Neil", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Washington Commanders", "DEF", "WAS", [["2025", "Mayank", "2-5", "0-5", 7, 5, 6.4, 0, 0], ["2025", "Rafael", "0-1", "0-1", 1, 1, 3.0, 0, 0]]], ["Wil Lutz", "K", "DEN", [["2025", "Ekaansh", "0-1", "0-1", 1, 1, 9.0, 1, 1], ["2025", "Koji", "0-1", "0-1", 4, 4, 6.8, 0, 0]]], ["Will Reichard", "K", "MIN", [["2025", "Alex", "3-10", "3-9", 15, 14, 9.0, 0, 0]]], ["Woody Marks", "RB", "HOU", [["2025", "Ani", "5-6", "1-3", 13, 5, 6.0, 1, 0], ["2026", "Ekaansh", "1-1", "0-0", 2, 0, null, 0, 0]]], ["Xavier Hutchinson", "WR", "HOU", [["2026", "Shravan", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Xavier Legette", "WR", "CAR", [["2025", "Ani", "1-0", "0-0", 1, 0, null, 1, 0], ["2025", "Winston", "1-0", "0-0", 1, 0, null, 0, 0]]], ["Xavier Worthy", "WR", "KC", [["2025", "Rafael", "6-5", "2-4", 11, 6, 7.6, 0, 0], ["2025", "Neil", "2-1", "1-0", 5, 1, 9.9, 1, 0], ["2026", "Arnav", "2-2", "0-0", 4, 0, null, 0, 0]]], ["Younghoe Koo", "K", "", [["2025", "Alex", "0-1", "0-1", 1, 1, 8.0, 0, 0]]], ["Zach Charbonnet", "RB", "SEA", [["2025", "Abhi", "7-7", "2-1", 16, 3, 9.3, 0, 0], ["2026", "Abhi", "0-4", "0-0", 4, 0, null, 0, 0]]], ["Zach Ertz", "TE", "PHI", [["2025", "Rafael", "2-0", "1-0", 2, 1, 6.8, 0, 0], ["2025", "Safwan", "1-0", "1-0", 1, 1, 0.0, 1, 0], ["2025", "Neil", "3-0", "1-0", 3, 1, 12.7, 1, 0], ["2025", "Shravan", "2-1", "1-0", 3, 1, 8.6, 1, 0], ["2025", "Koji", "0-1", "0-0", 1, 0, null, 0, 0], ["2026", "Koji", "0-1", "0-0", 1, 0, null, 0, 0]]], ["Zay Flowers", "WR", "BAL", [["2025", "Shravan", "7-7", "4-5", 16, 10, 10.1, 1, 0], ["2026", "Sathkrith", "4-0", "3-0", 4, 3, 22.4, 0, 0]]], ["Zonovan Knight", "RB", "ARI", [["2025", "Rafael", "1-1", "0-1", 2, 1, 6.7, 0, 0], ["2025", "Neil", "2-1", "0-0", 3, 0, null, 1, 0]]]];
 const q = document.getElementById('q'), list = document.getElementById('list'), out = document.getElementById('out');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function show(i) {
@@ -43,4 +394,478 @@ q.addEventListener('input', () => {
     }
   }
 });
+</script><script>/* LeagueGuide: same-origin chat client. Answers are rendered as plain text. */
+(function () {
+  "use strict";
+  // LeagueGuide is off until the chat backend runs on Cloudflare (it was built for
+  // Netlify Functions). Change false to true to bring the "Ask LeagueGuide" button back.
+  const CHAT_ENABLED = false;
+  if (!CHAT_ENABLED) return;
+  if (document.getElementById("league-guide")) return;
+  const sections = new Set([
+    "overview",
+    "profile",
+    "starts",
+    "trades",
+    "comebacks",
+    "saber",
+    "opportunity",
+    "luck",
+    "weekly",
+    "records",
+    "drafts",
+    "moves",
+    "charts",
+    "sharing",
+    "players",
+  ]);
+  const suggestions = [
+    [
+      "Scoring+ vs. record",
+      "Why can a manager have a high Scoring+ but a losing record?",
+    ],
+    [
+      "xFP vs. fantasy points",
+      "What is the difference between xFP, FPOE and fantasy points?",
+    ],
+    [
+      "Lineup regret",
+      "How is lineup regret calculated, and what does it leave out?",
+    ],
+    [
+      "Using the filters",
+      "How do the season, manager and platform filters work?",
+    ],
+  ];
+  const node = (tag, className, text) => {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  };
+  const button = (className, text) => {
+    const el = node("button", className, text);
+    el.type = "button";
+    return el;
+  };
+  const host = node("div", "league-guide");
+  host.id = "league-guide";
+  const launcher = button("lg-launcher", "Ask LeagueGuide");
+  launcher.setAttribute("aria-expanded", "false");
+  launcher.setAttribute("aria-controls", "lg-panel");
+  launcher.setAttribute("aria-haspopup", "dialog");
+  const panel = node("section", "lg-panel");
+  panel.id = "lg-panel";
+  panel.hidden = true;
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-labelledby", "lg-title");
+  panel.setAttribute("aria-describedby", "lg-description");
+  const header = node("header", "lg-header");
+  const headingGroup = node("div", "lg-heading-group");
+  headingGroup.append(node("span", "lg-eyebrow", "Your league, explained"));
+  const title = node("h2", "lg-title", "LeagueGuide");
+  title.id = "lg-title";
+  headingGroup.append(title);
+  const controls = node("div", "lg-controls");
+  const reset = button("lg-reset", "New chat");
+  reset.disabled = true;
+  const close = button("lg-close", "×");
+  close.setAttribute("aria-label", "Close LeagueGuide");
+  controls.append(reset, close);
+  header.append(headingGroup, controls);
+  const context = node("p", "lg-context");
+  context.id = "lg-description";
+  const transcript = node("div", "lg-transcript");
+  transcript.setAttribute("role", "log");
+  transcript.setAttribute("aria-label", "LeagueGuide conversation");
+  transcript.setAttribute("aria-live", "polite");
+  transcript.setAttribute("aria-relevant", "additions");
+  transcript.tabIndex = 0;
+  const welcome = node("div", "lg-welcome");
+  welcome.append(
+    node("h3", "", "Make sense of every stat."),
+    node(
+      "p",
+      "",
+      "Ask about a metric, a manager, a matchup or how to use the site. I’ll use the saved league data and show you where to look.",
+    ),
+  );
+  const prompts = node("div", "lg-prompts");
+  prompts.setAttribute("aria-label", "Suggested questions");
+  const promptButtons = suggestions.map(([label, question]) => {
+    const b = button("lg-prompt", label);
+    b.title = question;
+    b.onclick = () => {
+      input.value = question;
+      updateCount();
+      send(question);
+    };
+    return b;
+  });
+  prompts.append(...promptButtons);
+  welcome.append(prompts);
+  transcript.append(welcome);
+  const feedback = node("div", "lg-feedback");
+  const status = node("p", "lg-status");
+  status.setAttribute("role", "status");
+  const retry = button("lg-retry", "Try again");
+  retry.hidden = true;
+  feedback.append(status, retry);
+  const form = node("form", "lg-form");
+  const label = node("label", "lg-input-label", "Your question");
+  label.htmlFor = "lg-input";
+  const input = node("textarea", "lg-input");
+  input.id = "lg-input";
+  input.name = "message";
+  input.maxLength = 1500;
+  input.rows = 2;
+  input.placeholder = "What does Scoring+ tell me?";
+  input.required = true;
+  input.disabled = true;
+  input.setAttribute("aria-describedby", "lg-count lg-privacy");
+  const footer = node("div", "lg-form-footer");
+  const count = node("span", "lg-count", "0 / 1,500");
+  count.id = "lg-count";
+  const submit = button("lg-send", "Send question");
+  submit.type = "submit";
+  submit.disabled = true;
+  footer.append(count, submit);
+  form.append(label, input, footer);
+  const privacy = node(
+    "p",
+    "lg-privacy",
+    "Questions and relevant league stats are sent to Groq. Avoid sharing personal information. AI answers can be mistaken; check the linked sections.",
+  );
+  privacy.id = "lg-privacy";
+  panel.append(header, context, transcript, feedback, form, privacy);
+  host.append(launcher, panel);
+  document.body.append(host);
+
+  let session = null;
+  let bootPromise = null;
+  let busy = false;
+  let retryAction = null;
+
+  function selection() {
+    const out = document.getElementById("out");
+    const platform = out?.dataset.chatPlatform || "all";
+    const section =
+      out?.dataset.activeSection ||
+      (document.title === "Players" ? "players" : "overview");
+    return {
+      section: sections.has(section) ? section : "overview",
+      manager: out?.dataset.chatManager || "all",
+      season: out?.dataset.chatSeason || "all",
+      platform: ["all", "ESPN", "Sleeper"].includes(platform)
+        ? platform
+        : "all",
+      scope: out?.dataset.chatScope === "external" ? "external" : "saved",
+      games: ["regular", "postseason"].includes(out?.dataset.chatGames)
+        ? out.dataset.chatGames
+        : "all",
+      trade: section === "trades" ? out?.dataset.chatTrade || "" : "",
+      matchup: section === "comebacks" ? out?.dataset.chatMatchup || "" : "",
+      position:
+        section === "starts" ? out?.dataset.chatPosition || "all" : "all",
+    };
+  }
+  function updateContext() {
+    const s = selection();
+    if (s.scope === "external") {
+      context.textContent =
+        "I can explain the stats here. Manager and matchup answers use this site’s saved league; switch to Our league for those.";
+      return;
+    }
+    const page =
+      document.querySelector(
+        `#out .feature-tabs button[data-section="${s.section}"]`,
+      )?.textContent || (s.section === "players" ? "Players" : "Overview");
+    const season = s.season === "all" ? "all seasons" : s.season;
+    const platform = s.platform === "all" ? "all platforms" : s.platform;
+    const games =
+      s.section === "starts"
+        ? ` · ${s.games === "all" ? "all matchups" : s.games === "regular" ? "regular season" : "postseason"}`
+        : "";
+    context.textContent = `Viewing ${page} · ${season} · ${platform}${games}. Answers use the saved league snapshot.`;
+  }
+  function updateCount() {
+    count.textContent = `${input.value.length.toLocaleString()} / 1,500`;
+    submit.disabled = busy || !session?.configured || !input.value.trim();
+  }
+  function setBusy(value) {
+    busy = value;
+    input.disabled = value || !session?.configured;
+    reset.disabled = value || !session;
+    promptButtons.forEach((b) => {
+      b.disabled = value || !session?.configured;
+    });
+    form.setAttribute("aria-busy", String(value));
+    submit.textContent = value ? "Thinking…" : "Send question";
+    updateCount();
+  }
+  function feedbackText(message, action = null) {
+    status.textContent = message;
+    retryAction = action;
+    retry.hidden = !action;
+  }
+  async function request(path, options = {}) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(path, {
+        credentials: "same-origin",
+        cache: "no-store",
+        ...options,
+        signal: controller.signal,
+      });
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error(
+          "LeagueGuide needs the chat server. Start it with node server.mjs, then open the address it prints.",
+        );
+      }
+      const result = await response.json();
+      if (!result || typeof result !== "object" || Array.isArray(result)) {
+        throw new Error("LeagueGuide returned an invalid response. Try again.");
+      }
+      if (!response.ok) {
+        if (response.status === 403) session = null;
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error.slice(0, 600)
+            : "LeagueGuide is unavailable right now.",
+        );
+      }
+      return result;
+    } catch (error) {
+      if (error.name === "AbortError")
+        throw new Error("That answer took too long. Please try again.");
+      if (error instanceof TypeError)
+        throw new Error(
+          "Couldn’t reach LeagueGuide. Start node server.mjs and open the address it prints, or check your connection.",
+        );
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  async function boot() {
+    if (session) return Boolean(session.configured);
+    if (bootPromise) return bootPromise;
+    bootPromise = (async () => {
+      setBusy(true);
+      if (!/^https?:$/.test(window.location.protocol)) {
+        feedbackText(
+          "Open this report through the chat server to use LeagueGuide: run node server.mjs, then open the address it prints.",
+        );
+        setBusy(false);
+        return false;
+      }
+      feedbackText("Connecting to LeagueGuide…");
+      try {
+        const data = await request("/api/chat/session");
+        if (
+          typeof data.csrfToken !== "string" ||
+          typeof data.configured !== "boolean"
+        )
+          throw new Error(
+            "LeagueGuide returned an invalid session. Try again.",
+          );
+        session = data;
+        feedbackText(
+          session.configured
+            ? ""
+            : "LeagueGuide hasn’t been configured by the site owner yet.",
+        );
+        return session.configured;
+      } catch (error) {
+        feedbackText(error.message, boot);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    })();
+    try {
+      return await bootPromise;
+    } finally {
+      bootPromise = null;
+    }
+  }
+  function appendMessage(role, text, sources = []) {
+    const message = node("article", `lg-message lg-${role}`);
+    message.append(
+      node("p", "lg-message-label", role === "user" ? "You" : "LeagueGuide"),
+    );
+    message.append(node("p", "lg-message-text", text));
+    if (Array.isArray(sources) && sources.length) {
+      const links = node("div", "lg-sources");
+      links.setAttribute("aria-label", "Related sections");
+      for (const source of sources.slice(0, 6)) {
+        if (
+          !source ||
+          !sections.has(source.section) ||
+          typeof source.label !== "string"
+        )
+          continue;
+        const target = document.querySelector(
+          `#out .feature-tabs button[data-section="${source.section}"]`,
+        );
+        if (target) {
+          const b = button("lg-source", source.label.slice(0, 120));
+          b.onclick = () => {
+            document
+              .querySelector(
+                `#out .feature-tabs button[data-section="${source.section}"]`,
+              )
+              ?.click();
+            hide();
+            document
+              .querySelector(
+                `#out .feature-tabs button[data-section="${source.section}"]`,
+              )
+              ?.focus();
+          };
+          links.append(b);
+        } else {
+          const link = node(
+            "a",
+            "lg-source",
+            `${source.label.slice(0, 120)} ↗`,
+          );
+          link.href =
+            source.section === "players" ? "players.html" : "index.html";
+          link.setAttribute(
+            "aria-label",
+            `${source.label.slice(0, 120)} — open ${source.section === "players" ? "players" : "dashboard"}`,
+          );
+          links.append(link);
+        }
+      }
+      if (links.childElementCount) message.append(links);
+    }
+    transcript.append(message);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+  async function send(message, retrying = false) {
+    const text = message.trim();
+    if (!text || text.length > 1500 || busy) return;
+    setBusy(true);
+    if (!(await boot())) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    if (!retrying) {
+      welcome.hidden = true;
+      appendMessage("user", text);
+      input.value = "";
+    }
+    feedbackText("Looking at the league data…");
+    try {
+      const response = await request("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Chat-CSRF": session.csrfToken,
+        },
+        body: JSON.stringify({ message: text, selection: selection() }),
+      });
+      if (typeof response.answer !== "string" || !response.answer.trim())
+        throw new Error("LeagueGuide didn’t return an answer. Try again.");
+      appendMessage(
+        "assistant",
+        response.answer.slice(0, 24000),
+        response.sources,
+      );
+      feedbackText("");
+    } catch (error) {
+      feedbackText(error.message, () => send(text, true));
+    } finally {
+      setBusy(false);
+      if (!panel.hidden && !input.disabled)
+        input.focus({ preventScroll: true });
+    }
+  }
+  function hide() {
+    panel.hidden = true;
+    launcher.setAttribute("aria-expanded", "false");
+    launcher.focus({ preventScroll: true });
+  }
+  launcher.onclick = async () => {
+    if (!panel.hidden) {
+      hide();
+      return;
+    }
+    panel.hidden = false;
+    launcher.setAttribute("aria-expanded", "true");
+    updateContext();
+    close.focus({ preventScroll: true });
+    const connected = await boot();
+    if (connected && !panel.hidden) input.focus({ preventScroll: true });
+  };
+  close.onclick = hide;
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hide();
+    }
+  });
+  input.addEventListener("input", updateCount);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    send(input.value);
+  });
+  retry.onclick = () => retryAction?.();
+  reset.onclick = async () => {
+    if (busy || !session) return;
+    setBusy(true);
+    feedbackText("Starting a new chat…");
+    try {
+      const result = await request("/api/chat/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Chat-CSRF": session.csrfToken,
+        },
+        body: "{}",
+      });
+      if (
+        typeof result.csrfToken !== "string" ||
+        typeof result.configured !== "boolean"
+      )
+        throw new Error("Couldn’t start a new chat. Please try again.");
+      session = result;
+      transcript.replaceChildren(welcome);
+      welcome.hidden = false;
+      input.value = "";
+      feedbackText(
+        session.configured
+          ? ""
+          : "LeagueGuide hasn’t been configured by the site owner yet.",
+      );
+    } catch (error) {
+      feedbackText(error.message);
+    } finally {
+      setBusy(false);
+      if (!input.disabled) input.focus({ preventScroll: true });
+    }
+  };
+  const out = document.getElementById("out");
+  if (out)
+    new MutationObserver(updateContext).observe(out, {
+      attributes: true,
+      attributeFilter: [
+        "data-active-section",
+        "data-chat-manager",
+        "data-chat-season",
+        "data-chat-platform",
+        "data-chat-scope",
+        "data-chat-games",
+        "data-chat-trade",
+        "data-chat-matchup",
+        "data-chat-position",
+      ],
+    });
+  setBusy(false);
+  updateContext();
+})();
 </script></body></html>
