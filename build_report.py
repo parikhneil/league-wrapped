@@ -17,6 +17,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from fetch_nfl_opportunity import build_opportunity
+
 SOURCES = [
     ("Sleeper", Path("data")),
     ("ESPN", Path("data_espn")),
@@ -184,6 +186,9 @@ def playoff_roster_ids(d):
 def snapshot(all_seasons, shown, canon):
     """Normalize local platform data for the single shared JavaScript statistics engine."""
     pdb = load(Path("data") / "players.json", {}) or {}
+    espn_players = {str(info['espn_id']): info for info in pdb.values() if info.get('espn_id')}
+    nfl_ids = load(Path('data_nfl') / 'player_ids.json', {}) or {}
+    sleeper_ids = load(Path('data_nfl') / 'sleeper_ids.json', {}) or {}
     seasons = []
     for d in all_seasons:
         folder, src = d["folder"], d["src"]
@@ -195,33 +200,50 @@ def snapshot(all_seasons, shown, canon):
         player_ids = {pid for wk in weeks for m in wk for pid in (m.get("players") or [])}
         player_ids.update(p["player_id"] for p in picks)
         player_ids.update(pid for t in transactions for key in ("adds", "drops") for pid in (t.get(key) or {}))
-        players = {pid: {"name": pdb.get(pid, {}).get("full_name") or
-                        " ".join(filter(None, [pdb.get(pid, {}).get("first_name"), pdb.get(pid, {}).get("last_name")])) or pid}
-                   for pid in player_ids}
+        players = {}
+        for pid in player_ids:
+            info = pdb.get(pid, {}) if src == 'Sleeper' else espn_players.get(str(pid).removeprefix('espn:'), {})
+            espn_id = str(info.get('espn_id') or (str(pid).removeprefix('espn:') if src == 'ESPN' else ''))
+            nfl_info = sleeper_ids.get(str(pid), {}) if src == 'Sleeper' else nfl_ids.get(espn_id, {})
+            players[pid] = {
+                'name': info.get('full_name') or ' '.join(filter(None, [info.get('first_name'), info.get('last_name')])) or pid,
+                'position': info.get('position') or nfl_info.get('position') or '',
+                'fantasy_positions': info.get('fantasy_positions') or ([info['position']] if info.get('position') else []),
+                'gsis_id': (nfl_info.get('gsis_id') or info.get('gsis_id') or '').strip() or None,
+                'espn_id': espn_id or None,
+                'team': info.get('team'),
+            }
         if src == 'ESPN':
-            players.update(load(folder / 'players.json', {}) or {})
+            for pid, info in (load(folder / 'players.json', {}) or {}).items():
+                players[pid] = {**players.get(pid, {}), **info}
         rosters = [dict(r, owner_id=canon.get((src, r.get("owner_id")), r.get("owner_id"))) for r in d["rosters"]]
         owners = sorted({r["owner_id"] for r in rosters if r.get("owner_id")})
-        seasons.append({"src": src, "league": dict(d["league"], status=d["league"].get("status", "complete")),
+        league = dict(d["league"], status=d["league"].get("status", "complete"))
+        opportunity = build_opportunity(league, weeks, players, load(Path('data_nfl') / f'{d["season"]}.json', {}))
+        seasons.append({"src": src, "league": league,
                         "users": [{"user_id": u, "display_name": shown.get(u, u)} for u in owners],
                         "rosters": rosters, "bracket": d["bracket"], "weeks": weeks,
                         "losersBracket": load(folder / "losers_bracket.json", []) or [],
                         "picks": picks, "transactions": transactions, "players": players,
-                        "detailCoverage": load(folder / 'detail_coverage.json', {}) or {}})
+                        "detailCoverage": load(folder / 'detail_coverage.json', {}) or {},
+                        "opportunity": opportunity,
+                        "comebackHistory": load(folder / 'comeback_history.json', None)})
     return seasons
 
 
 def build_page(include, seasons, title, nav_html):
     """Embed the shared engine and UI so saved reports also work without a server."""
     payload = json.dumps([s for s in seasons if s["src"] in include], separators=(",", ":")).replace("</", "<\\/")
-    css = Path("league.css").read_text()
-    scripts = "\n".join(Path(f).read_text() for f in ("league-stats.js", "league-ui.js"))
+    css = "\n".join(Path(f).read_text() for f in ("league.css", "chat-widget.css"))
+    scripts = "\n".join(Path(f).read_text() for f in ("league-stats.js", "trade-analysis.js", "comeback-history.js", "league-ui.js"))
+    chat_script = Path("chat-widget.js").read_text()
     return (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)}</title>'
             f'<style>{css}</style></head><body><h1>{esc(title)}</h1><nav>{nav_html}</nav>'
             '<p class="sub">Saved snapshot. Active season results are provisional. <a href="index.html">Live dashboard</a></p>'
             f'<div id="out"></div><script>{scripts}</script><script>'
-            f'LeagueUI.mount(document.getElementById("out"), {payload});</script></body></html>')
+            f'LeagueUI.mount(document.getElementById("out"), {payload});</script>'
+            f'<script>{chat_script}</script></body></html>')
 
 
 PLAYERS_HTML = """<!DOCTYPE html>
@@ -335,12 +357,39 @@ def build_players_page(all_seasons, shown, canon, nav_html):
         out.append([name, p.get("position") or "", p.get("team") or "", sorted(rows, key=lambda r: r[0])])
     out.sort(key=lambda x: x[0].lower())
     data = json.dumps(out).replace("</", "<\\/")
-    return PLAYERS_HTML.replace("__NAV__", nav_html).replace("__DATA__", data)
+    page = PLAYERS_HTML.replace("__NAV__", nav_html).replace("__DATA__", data)
+    return page.replace("</head>", f'<style>{Path("chat-widget.css").read_text()}</style></head>').replace(
+        "</body>", f'<script>{Path("chat-widget.js").read_text()}</script></body>')
 
 
-def export_espn_js(all_seasons, shown, canon):
+def preserve_saved_espn(seasons, shown):
+    """Keep published ESPN history when ignored raw data is absent on CI."""
+    try:
+        text = Path('espn_league.js').read_text()
+        prefix = 'window.ESPN_SEASONS = '
+        if not text.startswith(prefix):
+            return seasons
+        saved, _ = json.JSONDecoder().raw_decode(text[len(prefix):])
+        present = {(s['src'], s['league']['season']) for s in seasons}
+        for season in saved:
+            key = (season['src'], season['league']['season'])
+            if season['src'] != 'ESPN' or key in present:
+                continue
+            for user in season['users']:
+                shown.setdefault(user['user_id'], user['display_name'])
+            source = load(Path('data_nfl') / f"{season['league']['season']}.json", {})
+            if source:
+                season['opportunity'] = build_opportunity(season['league'], season['weeks'], season['players'], source)
+            seasons.append(season)
+            present.add(key)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return sorted(seasons, key=lambda s: (s['league']['season'], s['src']))
+
+
+def export_espn_js(all_seasons, shown, canon, normalized=None):
     """Write espn_league.js: ESPN seasons (managers matched to Sleeper ids) + real names, for index.html."""
-    seasons = [s for s in snapshot(all_seasons, shown, canon) if s["src"] == "ESPN"]
+    seasons = [s for s in (normalized if normalized is not None else snapshot(all_seasons, shown, canon)) if s["src"] == "ESPN"]
     js = ("window.ESPN_SEASONS = " + json.dumps(seasons) + ";\nwindow.LEAGUE_NAMES = " + json.dumps(shown) + ";\n")
     Path("espn_league.js").write_text(js.replace("</", "<\\/"), encoding="utf-8")
 
@@ -359,7 +408,8 @@ def main():
         print("Reports were not overwritten: rebuilding with ESPN alone would remove Sleeper seasons and manager matches.")
         return
 
-    seasons = snapshot(all_seasons, shown, canon)
+    seasons = preserve_saved_espn(snapshot(all_seasons, shown, canon), shown)
+    srcs = sorted({s['src'] for s in seasons})
     Path("league-data.js").write_text("window.LEAGUE_SNAPSHOT = " + json.dumps(seasons, separators=(",", ":")).replace("</", "<\\/") + ";\n", encoding="utf-8")
 
     pages = [("report.html", set(srcs), "League History", "Combined")]
@@ -376,7 +426,7 @@ def main():
         print(f"Wrote {filename}")
 
     if "ESPN" in srcs:
-        export_espn_js(all_seasons, shown, canon)
+        export_espn_js(all_seasons, shown, canon, seasons)
         print("Wrote espn_league.js")
     if "Sleeper" in srcs:
         Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")

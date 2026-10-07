@@ -3,7 +3,18 @@
   "season": "2024",
   "name": "diddy stem league",
   "settings": {
-    "playoff_week_start": 15
+    "playoff_week_start": 15,
+    "lineup_slots": {
+      "QB": 1,
+      "RB": 2,
+      "WR": 2,
+      "TE": 1,
+      "DEF": 1,
+      "K": 1,
+      "BN": 7,
+      "IR": 1,
+      "FLEX": 1
+    }
   },
   "playoff_roster_ids": [
     1,
@@ -14,5 +25,20 @@
     14
   ],
   "previous_league_id": null,
-  "source": "espn"
+  "source": "espn",
+  "scoring_settings": {
+    "pass_int": -2.0,
+    "fum_lost": -2.0,
+    "pass_yd": 0.04,
+    "rush_yd": 0.1,
+    "rec_yd": 0.1,
+    "rec": 1.0,
+    "pass_2pt": 2.0,
+    "rush_2pt": 2.0,
+    "rec_2pt": 2.0,
+    "pass_td": 4.0,
+    "rush_td": 6.0,
+    "rec_td": 6.0,
+    "fum_rec_td": 6.0
+  }
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>League Wrapped</title>
     <link rel="stylesheet" href="league.css" />
+    <link rel="stylesheet" href="chat-widget.css" />
   </head>
   <body>
     <h1>League Wrapped</h1>
@@ -21,7 +22,10 @@
     <script src="espn_league.js"></script>
     <script src="league-data.js"></script>
     <script src="league-stats.js"></script>
+    <script src="trade-analysis.js"></script>
+    <script src="comeback-history.js"></script>
     <script src="league-ui.js"></script>
+    <script src="chat-widget.js" defer></script>
     <script>
       const DEFAULT_LEAGUE = "1381121078079795200";
       const API = "https://api.sleeper.app/v1";
@@ -53,9 +57,19 @@
             );
           const league = await get(`/league/${id}`);
           if (!league?.league_id) throw new Error("League not found");
-          const missing = [];
-          const optional = (label, path) =>
+          const missing = [],
+            savedFallbacks = [],
+            saved = window.LEAGUE_SNAPSHOT?.find(
+              (s) =>
+                s.src === "Sleeper" &&
+                String(s.league.league_id) === String(league.league_id),
+            );
+          const optional = (label, path, savedWeek) =>
             get(path).catch(() => {
+              if (Array.isArray(savedWeek) && savedWeek.length) {
+                savedFallbacks.push(label);
+                return structuredClone(savedWeek);
+              }
               missing.push(label);
               return [];
             });
@@ -69,6 +83,7 @@
                   optional(
                     `Week ${i + 1} matchups`,
                     `/league/${id}/matchups/${i + 1}`,
+                    saved?.weeks?.[i],
                   ),
                 ),
               ),
@@ -104,6 +119,7 @@
             picks,
             transactions,
             missing,
+            savedFallbacks,
           });
           id = league.previous_league_id;
         }
@@ -153,6 +169,12 @@
                       p.full_name ||
                       `${p.first_name || ""} ${p.last_name || ""}`.trim() ||
                       id,
+                    position: p.position || "",
+                    fantasy_positions:
+                      p.fantasy_positions || (p.position ? [p.position] : []),
+                    gsis_id: p.gsis_id || null,
+                    espn_id: p.espn_id || null,
+                    team: p.team || null,
                   },
                 ]),
               );
@@ -166,6 +188,25 @@
           sl.forEach((s) => {
             s.src = "Sleeper";
             s.players = playerNames;
+            const saved = window.LEAGUE_SNAPSHOT?.find(
+              (existing) =>
+                existing.src === "Sleeper" &&
+                existing.league.league_id === s.league.league_id,
+            );
+            s.opportunity = saved?.opportunity || null;
+            s.comebackHistory = saved?.comebackHistory || null;
+            if (saved?.players) {
+              s.players = { ...playerNames };
+              for (const [id, historical] of Object.entries(saved.players)) {
+                const live = playerNames[id] || {};
+                s.players[id] = {
+                  ...live,
+                  ...historical,
+                  gsis_id: historical.gsis_id || live.gsis_id || null,
+                  espn_id: historical.espn_id || live.espn_id || null,
+                };
+              }
+            }
           });
           const espn = isDefault ? window.ESPN_SEASONS || [] : [];
           loaded = { sl, espn, isDefault };

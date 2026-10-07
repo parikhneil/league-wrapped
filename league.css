@@ -228,3 +228,33 @@ a {
   border-radius: 10px;
   margin-bottom: 14px;
 }
+.lab-heading {
+  border-left: 4px solid var(--accent);
+  padding-left: 20px;
+  margin: 28px 0;
+}
+.lab-heading h2 {
+  margin: 6px 0;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+}
+.metric-guide {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 20px 12px;
+  margin-top: 24px;
+}
+.definition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 4px 28px;
+  line-height: 1.65;
+}
+.saber-chart svg {
+  max-width: 950px;
+}

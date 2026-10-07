@@ -2,7 +2,7 @@ name: Weekly update
 
 on:
   schedule:
-    - cron: "0 10 * * 2"   # Tuesdays at 10:00 UTC (6am Eastern)
+    - cron: "0 10 * * 2"   # Tuesdays at 10:00 UTC (6am EDT / 5am EST)
   workflow_dispatch:        # lets you run it by hand from GitHub
 
 permissions:
@@ -18,11 +18,19 @@ jobs:
           python-version: "3.12"
       - run: pip install requests
       - run: python fetch_sleeper_history.py
+      - run: python fetch_nfl_opportunity.py --no-build
+      - name: Reconstruct historical game-day comebacks
+        run: python fetch_comeback_history.py --no-build
+        continue-on-error: true   # Public NFL outages must not block the weekly report.
       - run: python build_report.py
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: node --test tests/stats.test.js
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Commit changes
         run: |
           git config user.name "github-actions"

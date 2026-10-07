@@ -12,6 +12,357 @@
   table { border-collapse:collapse; width:100%; font-size:14px; } .scroll { overflow-x:auto; }
   th, td { padding:6px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } th { background:var(--head); }
   small { color:var(--muted); font-weight:normal; }
+</style><style>.league-guide {
+  --lg-bg: var(--bg, #f7f9fc);
+  --lg-fg: var(--fg, #182234);
+  --lg-muted: var(--muted, #59677e);
+  --lg-line: var(--line, #dce3ef);
+  --lg-head: var(--head, #eef3fa);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--lg-fg);
+}
+.league-guide *,
+.league-guide *::before,
+.league-guide *::after {
+  box-sizing: border-box;
+}
+.league-guide [hidden] {
+  display: none !important;
+}
+.league-guide button,
+.league-guide textarea,
+.league-guide a {
+  font: inherit;
+}
+.league-guide button {
+  margin: 0;
+  cursor: pointer;
+}
+.league-guide button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.league-guide button:focus-visible,
+.league-guide textarea:focus-visible,
+.league-guide a:focus-visible,
+.lg-transcript:focus-visible {
+  outline: 3px solid var(--accent, #2563eb);
+  outline-offset: 3px;
+}
+.lg-launcher {
+  position: fixed;
+  z-index: 900;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  border: 1px solid #243c90;
+  border-radius: 999px;
+  background: #2448b9;
+  color: #fff;
+  padding: 13px 20px;
+  font-weight: 650 !important;
+  box-shadow: 0 5px 20px #101d4433;
+}
+.lg-launcher:hover {
+  background: #1e3c9c;
+  border-color: #1e3c9c;
+}
+.lg-panel {
+  position: fixed;
+  z-index: 901;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 64px);
+  display: flex;
+  flex-direction: column;
+  width: min(440px, calc(100vw - 40px));
+  max-height: min(720px, calc(100vh - 116px));
+  max-height: min(720px, calc(100dvh - 116px));
+  background: var(--lg-bg);
+  border: 1px solid var(--lg-line);
+  border-radius: 20px;
+  box-shadow: 0 16px 64px #09152c38;
+  overflow: hidden;
+}
+.lg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 13px;
+  flex: 0 0 auto;
+  background: var(--lg-head);
+}
+.lg-eyebrow {
+  display: block;
+  color: var(--lg-muted);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+}
+.league-guide .lg-title {
+  margin: 2px 0 0;
+  font-size: 23px;
+  line-height: 1.25;
+  letter-spacing: -0.6px;
+}
+.lg-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lg-reset,
+.lg-close {
+  border: 1px solid var(--lg-line);
+  border-radius: 8px;
+  background: var(--lg-bg);
+  color: var(--lg-fg);
+}
+.lg-reset {
+  padding: 7px 9px;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+.lg-close {
+  padding: 1px 8px;
+  font-size: 25px !important;
+  line-height: 1.3;
+}
+.lg-context {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 11px;
+  color: var(--lg-muted);
+  border-bottom: 1px solid var(--lg-line);
+  flex: 0 0 auto;
+}
+.lg-transcript {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  min-height: 0;
+  max-height: 380px;
+  flex: 1 1 auto;
+  scrollbar-width: thin;
+}
+.league-guide .lg-welcome h3 {
+  margin: 0 0 7px;
+  font-size: 20px;
+  letter-spacing: -0.4px;
+}
+.lg-welcome p {
+  margin: 0;
+  color: var(--lg-muted);
+  font-size: 13px;
+}
+.lg-prompts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+.lg-prompt {
+  border: 1px solid var(--lg-line);
+  border-radius: 10px;
+  background: var(--lg-head);
+  color: var(--lg-fg);
+  padding: 11px 10px;
+  text-align: left;
+  font-size: 12px !important;
+}
+.lg-message + .lg-message {
+  margin-top: 18px;
+}
+.lg-message {
+  min-width: 0;
+}
+.lg-message-label {
+  margin: 0 0 5px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: var(--lg-muted);
+}
+.lg-message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 13px;
+}
+.lg-user {
+  padding: 12px 14px;
+  background: var(--lg-head);
+  border: 1px solid var(--lg-line);
+  border-radius: 12px;
+}
+.lg-assistant {
+  padding: 0 2px;
+}
+.lg-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.league-guide .lg-source {
+  display: inline-block;
+  border: 1px solid var(--lg-line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  text-decoration: none;
+  background: var(--lg-head);
+  color: var(--accent, #2563eb);
+  font-size: 11px;
+}
+.lg-feedback {
+  flex: 0 0 auto;
+  padding: 0 20px;
+}
+.lg-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--lg-muted);
+}
+.lg-status:not(:empty) {
+  padding: 7px 0;
+}
+.lg-retry {
+  border: 1px solid var(--lg-line);
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: var(--lg-head);
+  color: var(--lg-fg);
+  font-size: 11px !important;
+  margin-bottom: 8px !important;
+}
+.lg-form {
+  padding: 12px 20px 0;
+  border-top: 1px solid var(--lg-line);
+  flex: 0 0 auto;
+}
+.lg-input-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.league-guide .lg-input {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 65px;
+  max-height: 140px;
+  border: 1px solid var(--lg-line);
+  border-radius: 10px;
+  background: var(--lg-bg);
+  color: var(--lg-fg);
+  padding: 10px 12px;
+  line-height: 1.45;
+  font-size: 13px;
+}
+.lg-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+}
+.lg-count {
+  color: var(--lg-muted);
+  font-size: 10px;
+}
+.lg-send {
+  background: #2448b9;
+  color: #fff;
+  border: 1px solid #2448b9;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+.lg-send:hover {
+  background: #1e3c9c;
+  border-color: #1e3c9c;
+}
+.lg-privacy {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 20px 14px;
+  color: var(--lg-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+@media (max-width: 520px) {
+  .lg-launcher {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 11px 16px;
+    font-size: 13px !important;
+  }
+  .lg-panel {
+    right: 12px;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 58px);
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 90px);
+    max-height: calc(100dvh - 90px);
+    border-radius: 16px;
+  }
+  .lg-header {
+    padding: 14px 16px 11px;
+  }
+  .lg-context {
+    padding: 8px 16px;
+  }
+  .lg-transcript {
+    padding: 16px;
+  }
+  .lg-feedback {
+    padding: 0 16px;
+  }
+  .lg-form {
+    padding: 10px 16px 0;
+  }
+  .league-guide .lg-input {
+    font-size: 16px;
+  }
+  .lg-privacy {
+    padding: 0 16px 12px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .lg-launcher {
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+}
+@media (max-height: 520px) {
+  .lg-panel {
+    bottom: 10px;
+    max-height: calc(100dvh - 20px);
+  }
+  .lg-header {
+    padding-top: 10px;
+    padding-bottom: 9px;
+  }
+  .lg-eyebrow {
+    display: none;
+  }
+  .lg-context {
+    font-size: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .league-guide .lg-input {
+    min-height: 48px;
+    max-height: 70px;
+  }
+  .lg-privacy {
+    padding-bottom: 7px;
+  }
+}
 </style></head><body>
 <h1>Players</h1>
 <nav><a href="report.html">Combined</a> <a href="report_espn.html">ESPN</a> <a href="report_sleeper.html">Sleeper</a> <a href="players.html">Players</a></nav>
@@ -43,4 +394,474 @@ q.addEventListener('input', () => {
     }
   }
 });
+</script><script>/* LeagueGuide: same-origin chat client. Answers are rendered as plain text. */
+(function () {
+  "use strict";
+  if (document.getElementById("league-guide")) return;
+  const sections = new Set([
+    "overview",
+    "profile",
+    "starts",
+    "trades",
+    "comebacks",
+    "saber",
+    "opportunity",
+    "luck",
+    "weekly",
+    "records",
+    "drafts",
+    "moves",
+    "charts",
+    "sharing",
+    "players",
+  ]);
+  const suggestions = [
+    [
+      "Scoring+ vs. record",
+      "Why can a manager have a high Scoring+ but a losing record?",
+    ],
+    [
+      "xFP vs. fantasy points",
+      "What is the difference between xFP, FPOE and fantasy points?",
+    ],
+    [
+      "Lineup regret",
+      "How is lineup regret calculated, and what does it leave out?",
+    ],
+    [
+      "Using the filters",
+      "How do the season, manager and platform filters work?",
+    ],
+  ];
+  const node = (tag, className, text) => {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  };
+  const button = (className, text) => {
+    const el = node("button", className, text);
+    el.type = "button";
+    return el;
+  };
+  const host = node("div", "league-guide");
+  host.id = "league-guide";
+  const launcher = button("lg-launcher", "Ask LeagueGuide");
+  launcher.setAttribute("aria-expanded", "false");
+  launcher.setAttribute("aria-controls", "lg-panel");
+  launcher.setAttribute("aria-haspopup", "dialog");
+  const panel = node("section", "lg-panel");
+  panel.id = "lg-panel";
+  panel.hidden = true;
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-labelledby", "lg-title");
+  panel.setAttribute("aria-describedby", "lg-description");
+  const header = node("header", "lg-header");
+  const headingGroup = node("div", "lg-heading-group");
+  headingGroup.append(node("span", "lg-eyebrow", "Your league, explained"));
+  const title = node("h2", "lg-title", "LeagueGuide");
+  title.id = "lg-title";
+  headingGroup.append(title);
+  const controls = node("div", "lg-controls");
+  const reset = button("lg-reset", "New chat");
+  reset.disabled = true;
+  const close = button("lg-close", "×");
+  close.setAttribute("aria-label", "Close LeagueGuide");
+  controls.append(reset, close);
+  header.append(headingGroup, controls);
+  const context = node("p", "lg-context");
+  context.id = "lg-description";
+  const transcript = node("div", "lg-transcript");
+  transcript.setAttribute("role", "log");
+  transcript.setAttribute("aria-label", "LeagueGuide conversation");
+  transcript.setAttribute("aria-live", "polite");
+  transcript.setAttribute("aria-relevant", "additions");
+  transcript.tabIndex = 0;
+  const welcome = node("div", "lg-welcome");
+  welcome.append(
+    node("h3", "", "Make sense of every stat."),
+    node(
+      "p",
+      "",
+      "Ask about a metric, a manager, a matchup or how to use the site. I’ll use the saved league data and show you where to look.",
+    ),
+  );
+  const prompts = node("div", "lg-prompts");
+  prompts.setAttribute("aria-label", "Suggested questions");
+  const promptButtons = suggestions.map(([label, question]) => {
+    const b = button("lg-prompt", label);
+    b.title = question;
+    b.onclick = () => {
+      input.value = question;
+      updateCount();
+      send(question);
+    };
+    return b;
+  });
+  prompts.append(...promptButtons);
+  welcome.append(prompts);
+  transcript.append(welcome);
+  const feedback = node("div", "lg-feedback");
+  const status = node("p", "lg-status");
+  status.setAttribute("role", "status");
+  const retry = button("lg-retry", "Try again");
+  retry.hidden = true;
+  feedback.append(status, retry);
+  const form = node("form", "lg-form");
+  const label = node("label", "lg-input-label", "Your question");
+  label.htmlFor = "lg-input";
+  const input = node("textarea", "lg-input");
+  input.id = "lg-input";
+  input.name = "message";
+  input.maxLength = 1500;
+  input.rows = 2;
+  input.placeholder = "What does Scoring+ tell me?";
+  input.required = true;
+  input.disabled = true;
+  input.setAttribute("aria-describedby", "lg-count lg-privacy");
+  const footer = node("div", "lg-form-footer");
+  const count = node("span", "lg-count", "0 / 1,500");
+  count.id = "lg-count";
+  const submit = button("lg-send", "Send question");
+  submit.type = "submit";
+  submit.disabled = true;
+  footer.append(count, submit);
+  form.append(label, input, footer);
+  const privacy = node(
+    "p",
+    "lg-privacy",
+    "Questions and relevant league stats are sent to Groq. Avoid sharing personal information. AI answers can be mistaken; check the linked sections.",
+  );
+  privacy.id = "lg-privacy";
+  panel.append(header, context, transcript, feedback, form, privacy);
+  host.append(launcher, panel);
+  document.body.append(host);
+
+  let session = null;
+  let bootPromise = null;
+  let busy = false;
+  let retryAction = null;
+
+  function selection() {
+    const out = document.getElementById("out");
+    const platform = out?.dataset.chatPlatform || "all";
+    const section =
+      out?.dataset.activeSection ||
+      (document.title === "Players" ? "players" : "overview");
+    return {
+      section: sections.has(section) ? section : "overview",
+      manager: out?.dataset.chatManager || "all",
+      season: out?.dataset.chatSeason || "all",
+      platform: ["all", "ESPN", "Sleeper"].includes(platform)
+        ? platform
+        : "all",
+      scope: out?.dataset.chatScope === "external" ? "external" : "saved",
+      games: ["regular", "postseason"].includes(out?.dataset.chatGames)
+        ? out.dataset.chatGames
+        : "all",
+      trade: section === "trades" ? out?.dataset.chatTrade || "" : "",
+      matchup: section === "comebacks" ? out?.dataset.chatMatchup || "" : "",
+      position:
+        section === "starts" ? out?.dataset.chatPosition || "all" : "all",
+    };
+  }
+  function updateContext() {
+    const s = selection();
+    if (s.scope === "external") {
+      context.textContent =
+        "I can explain the stats here. Manager and matchup answers use this site’s saved league; switch to Our league for those.";
+      return;
+    }
+    const page =
+      document.querySelector(
+        `#out .feature-tabs button[data-section="${s.section}"]`,
+      )?.textContent || (s.section === "players" ? "Players" : "Overview");
+    const season = s.season === "all" ? "all seasons" : s.season;
+    const platform = s.platform === "all" ? "all platforms" : s.platform;
+    const games =
+      s.section === "starts"
+        ? ` · ${s.games === "all" ? "all matchups" : s.games === "regular" ? "regular season" : "postseason"}`
+        : "";
+    context.textContent = `Viewing ${page} · ${season} · ${platform}${games}. Answers use the saved league snapshot.`;
+  }
+  function updateCount() {
+    count.textContent = `${input.value.length.toLocaleString()} / 1,500`;
+    submit.disabled = busy || !session?.configured || !input.value.trim();
+  }
+  function setBusy(value) {
+    busy = value;
+    input.disabled = value || !session?.configured;
+    reset.disabled = value || !session;
+    promptButtons.forEach((b) => {
+      b.disabled = value || !session?.configured;
+    });
+    form.setAttribute("aria-busy", String(value));
+    submit.textContent = value ? "Thinking…" : "Send question";
+    updateCount();
+  }
+  function feedbackText(message, action = null) {
+    status.textContent = message;
+    retryAction = action;
+    retry.hidden = !action;
+  }
+  async function request(path, options = {}) {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(path, {
+        credentials: "same-origin",
+        cache: "no-store",
+        ...options,
+        signal: controller.signal,
+      });
+      if (!response.headers.get("content-type")?.includes("application/json")) {
+        throw new Error(
+          "LeagueGuide needs the chat server. Start it with node server.mjs, then open the address it prints.",
+        );
+      }
+      const result = await response.json();
+      if (!result || typeof result !== "object" || Array.isArray(result)) {
+        throw new Error("LeagueGuide returned an invalid response. Try again.");
+      }
+      if (!response.ok) {
+        if (response.status === 403) session = null;
+        throw new Error(
+          typeof result.error === "string"
+            ? result.error.slice(0, 600)
+            : "LeagueGuide is unavailable right now.",
+        );
+      }
+      return result;
+    } catch (error) {
+      if (error.name === "AbortError")
+        throw new Error("That answer took too long. Please try again.");
+      if (error instanceof TypeError)
+        throw new Error(
+          "Couldn’t reach LeagueGuide. Start node server.mjs and open the address it prints, or check your connection.",
+        );
+      throw error;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  async function boot() {
+    if (session) return Boolean(session.configured);
+    if (bootPromise) return bootPromise;
+    bootPromise = (async () => {
+      setBusy(true);
+      if (!/^https?:$/.test(window.location.protocol)) {
+        feedbackText(
+          "Open this report through the chat server to use LeagueGuide: run node server.mjs, then open the address it prints.",
+        );
+        setBusy(false);
+        return false;
+      }
+      feedbackText("Connecting to LeagueGuide…");
+      try {
+        const data = await request("/api/chat/session");
+        if (
+          typeof data.csrfToken !== "string" ||
+          typeof data.configured !== "boolean"
+        )
+          throw new Error(
+            "LeagueGuide returned an invalid session. Try again.",
+          );
+        session = data;
+        feedbackText(
+          session.configured
+            ? ""
+            : "LeagueGuide hasn’t been configured by the site owner yet.",
+        );
+        return session.configured;
+      } catch (error) {
+        feedbackText(error.message, boot);
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    })();
+    try {
+      return await bootPromise;
+    } finally {
+      bootPromise = null;
+    }
+  }
+  function appendMessage(role, text, sources = []) {
+    const message = node("article", `lg-message lg-${role}`);
+    message.append(
+      node("p", "lg-message-label", role === "user" ? "You" : "LeagueGuide"),
+    );
+    message.append(node("p", "lg-message-text", text));
+    if (Array.isArray(sources) && sources.length) {
+      const links = node("div", "lg-sources");
+      links.setAttribute("aria-label", "Related sections");
+      for (const source of sources.slice(0, 6)) {
+        if (
+          !source ||
+          !sections.has(source.section) ||
+          typeof source.label !== "string"
+        )
+          continue;
+        const target = document.querySelector(
+          `#out .feature-tabs button[data-section="${source.section}"]`,
+        );
+        if (target) {
+          const b = button("lg-source", source.label.slice(0, 120));
+          b.onclick = () => {
+            document
+              .querySelector(
+                `#out .feature-tabs button[data-section="${source.section}"]`,
+              )
+              ?.click();
+            hide();
+            document
+              .querySelector(
+                `#out .feature-tabs button[data-section="${source.section}"]`,
+              )
+              ?.focus();
+          };
+          links.append(b);
+        } else {
+          const link = node(
+            "a",
+            "lg-source",
+            `${source.label.slice(0, 120)} ↗`,
+          );
+          link.href =
+            source.section === "players" ? "players.html" : "index.html";
+          link.setAttribute(
+            "aria-label",
+            `${source.label.slice(0, 120)} — open ${source.section === "players" ? "players" : "dashboard"}`,
+          );
+          links.append(link);
+        }
+      }
+      if (links.childElementCount) message.append(links);
+    }
+    transcript.append(message);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+  async function send(message, retrying = false) {
+    const text = message.trim();
+    if (!text || text.length > 1500 || busy) return;
+    setBusy(true);
+    if (!(await boot())) {
+      setBusy(false);
+      return;
+    }
+    setBusy(true);
+    if (!retrying) {
+      welcome.hidden = true;
+      appendMessage("user", text);
+      input.value = "";
+    }
+    feedbackText("Looking at the league data…");
+    try {
+      const response = await request("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Chat-CSRF": session.csrfToken,
+        },
+        body: JSON.stringify({ message: text, selection: selection() }),
+      });
+      if (typeof response.answer !== "string" || !response.answer.trim())
+        throw new Error("LeagueGuide didn’t return an answer. Try again.");
+      appendMessage(
+        "assistant",
+        response.answer.slice(0, 24000),
+        response.sources,
+      );
+      feedbackText("");
+    } catch (error) {
+      feedbackText(error.message, () => send(text, true));
+    } finally {
+      setBusy(false);
+      if (!panel.hidden && !input.disabled)
+        input.focus({ preventScroll: true });
+    }
+  }
+  function hide() {
+    panel.hidden = true;
+    launcher.setAttribute("aria-expanded", "false");
+    launcher.focus({ preventScroll: true });
+  }
+  launcher.onclick = async () => {
+    if (!panel.hidden) {
+      hide();
+      return;
+    }
+    panel.hidden = false;
+    launcher.setAttribute("aria-expanded", "true");
+    updateContext();
+    close.focus({ preventScroll: true });
+    const connected = await boot();
+    if (connected && !panel.hidden) input.focus({ preventScroll: true });
+  };
+  close.onclick = hide;
+  panel.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hide();
+    }
+  });
+  input.addEventListener("input", updateCount);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    send(input.value);
+  });
+  retry.onclick = () => retryAction?.();
+  reset.onclick = async () => {
+    if (busy || !session) return;
+    setBusy(true);
+    feedbackText("Starting a new chat…");
+    try {
+      const result = await request("/api/chat/session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Chat-CSRF": session.csrfToken,
+        },
+        body: "{}",
+      });
+      if (
+        typeof result.csrfToken !== "string" ||
+        typeof result.configured !== "boolean"
+      )
+        throw new Error("Couldn’t start a new chat. Please try again.");
+      session = result;
+      transcript.replaceChildren(welcome);
+      welcome.hidden = false;
+      input.value = "";
+      feedbackText(
+        session.configured
+          ? ""
+          : "LeagueGuide hasn’t been configured by the site owner yet.",
+      );
+    } catch (error) {
+      feedbackText(error.message);
+    } finally {
+      setBusy(false);
+      if (!input.disabled) input.focus({ preventScroll: true });
+    }
+  };
+  const out = document.getElementById("out");
+  if (out)
+    new MutationObserver(updateContext).observe(out, {
+      attributes: true,
+      attributeFilter: [
+        "data-active-section",
+        "data-chat-manager",
+        "data-chat-season",
+        "data-chat-platform",
+        "data-chat-scope",
+        "data-chat-games",
+        "data-chat-trade",
+        "data-chat-matchup",
+        "data-chat-position",
+      ],
+    });
+  setBusy(false);
+  updateContext();
+})();
 </script></body></html>

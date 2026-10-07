@@ -18,6 +18,30 @@ def save(path, data):
     tmp.replace(path)
 
 
+def normalize_settings(settings):
+    """Preserve legal roster slots and linear offense scoring for shared metrics."""
+    slot_names = {0: 'QB', 1: 'TQB', 2: 'RB', 3: 'RB/WR', 4: 'WR',
+                  5: 'WR/TE', 6: 'TE', 7: 'SUPER_FLEX', 8: 'DT', 9: 'DE',
+                  10: 'LB', 11: 'DL', 12: 'CB', 13: 'S', 14: 'DB', 15: 'DP',
+                  16: 'DEF', 17: 'K', 18: 'P', 19: 'HC', 20: 'BN', 21: 'IR',
+                  23: 'FLEX', 24: 'ER'}
+    slots = {slot_names.get(int(slot), str(slot)): count
+             for slot, count in settings.get('rosterSettings', {}).get('lineupSlotCounts', {}).items()
+             if count}
+    stat_keys = {0: 'pass_att', 1: 'pass_cmp', 2: 'pass_inc', 3: 'pass_yd',
+                 4: 'pass_td', 19: 'pass_2pt', 20: 'pass_int', 23: 'rush_att',
+                 24: 'rush_yd', 25: 'rush_td', 26: 'rush_2pt', 41: 'rec',
+                 42: 'rec_yd', 43: 'rec_td', 44: 'rec_2pt', 53: 'rec',
+                 63: 'fum_rec_td', 68: 'fum', 72: 'fum_lost',
+                 211: 'pass_fd', 212: 'rush_fd', 213: 'rec_fd'}
+    scoring = {}
+    for item in settings.get('scoringSettings', {}).get('scoringItems', []):
+        key = stat_keys.get(item['statId'])
+        if key:
+            scoring[key] = scoring.get(key, 0) + item.get('points', 0)
+    return {'lineup_slots': slots, 'scoring_settings': scoring}
+
+
 def bootstrap_season(raw, folder):
     """Create the builder's base files from ESPN, without needing saved history."""
     season = str(raw['seasonId'])
@@ -27,10 +51,12 @@ def bootstrap_season(raw, folder):
     playoff_start = max(w for p, weeks in periods.items() if int(p) <= regular for w in weeks) + 1
     teams = raw['teams']
     playoff_ids = [t['id'] for t in teams if 0 < t.get('playoffSeed', 0) <= schedule['playoffTeamCount']]
+    normalized = normalize_settings(raw['settings'])
     league = {'league_id': str(raw['id']), 'season': season,
               'name': raw['settings']['name'], 'source': 'espn',
               'status': 'complete' if raw['status']['latestScoringPeriod'] > raw['status']['finalScoringPeriod'] else 'in_season',
-              'settings': {'playoff_week_start': playoff_start},
+              'settings': {'playoff_week_start': playoff_start, 'lineup_slots': normalized['lineup_slots']},
+              'scoring_settings': normalized['scoring_settings'],
               'playoff_roster_ids': playoff_ids, 'previous_league_id': None}
     users = [{'user_id': m['id'], 'display_name': m.get('displayName', ''),
               'full_name': ' '.join(filter(None, [m.get('firstName'), m.get('lastName')]))}
@@ -76,21 +102,25 @@ def bootstrap_season(raw, folder):
 
 def normalize_lineup(lineup):
     """Namespace ESPN IDs to avoid collisions with Sleeper IDs."""
-    players, starters, points = [], [], {}
+    players, starters, points, excluded = [], [], {}, []
     for player in lineup:
         pid = f'espn:{player.playerId}'
         players.append(pid)
         if player.slot_position not in ('BE', 'IR'):
             starters.append(pid)
+        if player.slot_position == 'IR':
+            excluded.append(pid)
         points[pid] = player.points
-    return {'players': players, 'starters': starters, 'players_points': points}
+    return {'players': players, 'starters': starters, 'players_points': points,
+            'excluded_players': excluded}
 
 
 def normalize_transaction(raw):
     kind = raw.get('type')
     if raw.get('status') != 'EXECUTED' or kind not in ('FREEAGENT', 'WAIVER', 'TRADE_ACCEPT'):
         return None
-    adds, drops = {}, {}
+    adds, drops, roster_cuts = {}, {}, {}
+    ambiguous_trade_item = False
     for item in raw.get('items') or []:
         if item.get('playerId') is None:
             continue
@@ -100,12 +130,20 @@ def normalize_transaction(raw):
             drops[pid] = source
         if isinstance(target, int) and target > 0:
             adds[pid] = target
+        elif kind == 'TRADE_ACCEPT' and isinstance(source, int) and source > 0:
+            # A roster-balancing cut can accompany a trade, but is not sent to
+            # the counterparty. Preserve drops for existing transaction views.
+            if 'toTeamId' in item and (target is None or isinstance(target, int) and target <= 0):
+                roster_cuts[pid] = source
+            else:
+                ambiguous_trade_item = True
     return {'transaction_id': str(raw['id']), 'status': 'complete',
             'type': {'FREEAGENT': 'free_agent', 'WAIVER': 'waiver', 'TRADE_ACCEPT': 'trade'}[kind],
             'leg': raw.get('scoringPeriodId', 1),
             'status_updated': raw.get('processDate') or raw.get('acceptedDate') or raw.get('proposedDate') or 0,
             'adds': adds, 'drops': drops, 'draft_picks': [], 'waiver_budget': [],
-            'details_incomplete': not bool(raw.get('items')),
+            'details_incomplete': not bool(raw.get('items')) or ambiguous_trade_item,
+            'roster_cuts': roster_cuts,
             'bid_amount': raw.get('bidAmount')}
 
 
@@ -142,6 +180,16 @@ def main():
             bootstrap_season(raw, folder)
         except Exception:
             raise SystemExit('Could not initialize ESPN league history. Check league access and try again.')
+    try:
+        raw_settings = league.espn_request.league_get(params={'view': 'mSettings'})['settings']
+        normalized = normalize_settings(raw_settings)
+        league_path = folder / 'league.json'
+        saved_league = json.loads(league_path.read_text())
+        saved_league.setdefault('settings', {})['lineup_slots'] = normalized['lineup_slots']
+        saved_league['scoring_settings'] = normalized['scoring_settings']
+        save(league_path, saved_league)
+    except Exception:
+        print('ESPN scoring and roster-slot metadata unavailable; retained saved settings.')
     draft_id = f'espn-{args.season}-api'
     players = {}
     def remember(player):
