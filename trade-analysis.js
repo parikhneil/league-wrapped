@@ -379,5 +379,70 @@
     return { trades, names, coverage: { trades: trades.length, excludedFuture, excludedPending, missingTiming } };
   }
 
-  return { analyze };
+  // Trade skill as the record shows it. Every comparable trade contributes the
+  // starter-point margin between what a manager received and what the other
+  // side received, so both how often a manager won and by how much survive into
+  // the ranking: net margin orders it, and the win-loss count sits beside it.
+  // Multi-team trades compare a package against the average of the others.
+  // Trades the analyzer could not compare are counted but never scored, so an
+  // incomplete import cannot be mistaken for an even swap.
+  function rankManagers(trades) {
+    const rows = new Map();
+    const rowFor = (uid) => {
+      if (!rows.has(uid)) {
+        rows.set(uid, {
+          uid, trades: 0, wins: 0, losses: 0, even: 0,
+          net: 0, received: 0, given: 0, best: null, worst: null, uncomparable: 0,
+        });
+      }
+      return rows.get(uid);
+    };
+    for (const trade of trades || []) {
+      const participants = trade.participants || [];
+      for (const p of participants) {
+        const row = rowFor(p.uid);
+        const others = participants.filter((other) => other.uid !== p.uid);
+        if (!trade.balance?.comparable || !others.length) {
+          row.uncomparable++;
+          continue;
+        }
+        const against = sum(others.map((other) => other.receivedPoints)) / others.length;
+        const margin = p.receivedPoints - against;
+        row.trades++;
+        row.net += margin;
+        row.received += p.receivedPoints;
+        row.given += against;
+        if (margin > 0) row.wins++;
+        else if (margin < 0) row.losses++;
+        else row.even++;
+        const entry = {
+          margin, id: trade.id, season: trade.season, year: trade.year,
+          week: trade.week, opponents: others.map((other) => other.uid),
+        };
+        if (!row.best || margin > row.best.margin) row.best = entry;
+        if (!row.worst || margin < row.worst.margin) row.worst = entry;
+      }
+    }
+    const ranked = [...rows.values()].map((row) => ({
+      ...row,
+      avg: row.trades ? row.net / row.trades : null,
+      winRate: row.trades ? (row.wins + row.even / 2) / row.trades : null,
+    })).sort((a, b) =>
+      (b.trades > 0) - (a.trades > 0) || b.net - a.net ||
+      b.wins - a.wins || a.losses - b.losses || String(a.uid).localeCompare(String(b.uid)));
+    // A manager with no comparable trade has nothing to rank: a zero net would
+    // otherwise place them above everyone who has ever lost a trade.
+    let rank = 0;
+    ranked.forEach((row, index) => {
+      if (!row.trades) {
+        row.rank = null;
+        return;
+      }
+      if (index === 0 || row.net !== ranked[index - 1].net) rank = index + 1;
+      row.rank = rank;
+    });
+    return ranked;
+  }
+
+  return { analyze, rankManagers };
 });

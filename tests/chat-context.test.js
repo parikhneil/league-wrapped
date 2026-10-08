@@ -221,6 +221,39 @@ test("draft, transaction, week, player and record questions retrieve their actua
   );
 });
 
+test("per-start draft questions rank by rate and keep never-rostered picks out", () => {
+  const rate = buildContext("Worst draft picks by points per start", {
+    section: "drafts",
+  });
+  const rows = rowsOf(rate, "draftPickContribution");
+  assert.ok(rows.length > 0);
+  // The rate board needs a real denominator, and ranks ascending for "worst".
+  assert.ok(rows.every((r) => r.starts >= 8 && typeof r.ptsPerStart === "number"));
+  assert.ok(
+    rows.every((r, i) => i === 0 || rows[i - 1].valuePerStart <= r.valuePerStart),
+  );
+  // The players page also claims "points per start"; drafts must win here.
+  assert.equal(rowsOf(rate, "playerSeasonManagerHistory").length, 0);
+  // A pick that never reached the drafting roster is not a draft disappointment.
+  const byTotal = rowsOf(
+    buildContext("Biggest draft disappointments of all time", {
+      section: "drafts",
+    }),
+    "draftPickContribution",
+  );
+  assert.ok(byTotal.length > 0);
+  assert.ok(!byTotal.some((r) => r.rostered === 0));
+  // It is still reachable when the question actually asks for it.
+  const never = rowsOf(
+    buildContext("Which draft picks were never started by the drafting manager", {
+      section: "drafts",
+    }),
+    "draftPickNeverStarted",
+  );
+  assert.ok(never.length > 0);
+  assert.ok(never.every((r) => typeof r.rostered === "number"));
+  assert.ok(never.some((r) => r.neverRostered === true));
+});
 test("Kaushal/Winston identity answers distinguish exact season rates from career aggregates", () => {
   const result = buildContext(
     "Why are Kaushal and Winston listed separately? What are their season records?",

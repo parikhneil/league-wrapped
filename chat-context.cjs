@@ -51,7 +51,7 @@ const GUIDE = Object.freeze({
   records:
     "Records include high/low regular-season scores, largest margin, closest games, within-season win streaks (ties break streak), standings comebacks and rivalries. Comeback=worst weekly rank-final available rank, ranked using win percentage then PF. Competitive rivalries require>=2 meetings and minimize absolute win imbalance/meetings, breaking ties by more meetings. Postseason head-to-head is separate from regular-season rivalries.",
   drafts:
-    "Draft contribution=actual starter points for ORIGINAL drafting manager through completed weeks INCLUDING playoffs. Pick value=contribution-season's same-round average; not NFL total points or preseason expectation. Bargains use round>=8; disappointments rounds1-3. Unknown contribution is unavailable, not zero. Filter seasons for comparable playing time; active-season contributions are to date.",
+    "Draft contribution=starter points for ORIGINAL drafting manager, completed weeks INCLUDING playoffs; not NFL points or preseason expectation. value=pts-roundMean(season+round mean pick). valuePerStart=pts/starts-roundPerStart(season+round start-weighted), needs starts>=8. starts=0 listed separately, never rate-ranked; rostered=0 excluded from BOTH rankings. Bargains round>=8; disappointments rounds1-3; active seasons to date.",
   moves:
     "Only completed trades/waivers/free-agent moves. Acquisition contribution starts week AFTER acquisition, ends after week of next recorded drop/trade away, counts actual weekly starts, includes completed playoffs. Same-week points omitted because snapshots cannot establish lineup timing; preseason moves recorded week1 also exclude week1. Picks/FAAB transfers shown when available. ESPN historical transaction completeness is unverified; missing items/lineups marked unavailable. Contribution is raw starter points, not replacement-level value or proof of trade quality.",
   charts:
@@ -592,6 +592,16 @@ function buildContext(question, selection = {}, history = []) {
   })
     .filter(([, pattern]) => pattern.test(query))
     .map(([section]) => section);
+  // "Draft points per start" belongs to the draft board, but the players
+  // section also claims that phrase; drop it unless the wording is really
+  // about player history, so draft evidence keeps the fact budget.
+  if (
+    /draft|bargain|disappointment/.test(query) &&
+    !/player history|record on roster|when started|rostered/.test(query)
+  ) {
+    const playersAt = askedSections.indexOf("players");
+    if (playersAt >= 0) askedSections.splice(playersAt, 1);
+  }
   if (uids.length && !askedSections.includes("profile"))
     askedSections.push("profile");
   const sections = [...new Set([...askedSections, safe.section])];
@@ -1110,17 +1120,52 @@ function buildContext(question, selection = {}, history = []) {
       let rows = D.drafts.filter(
         (p) => selected(p.uid) && playerSelected(p.player),
       );
+      const perStart = /per start|points?\s*\/\s*start|\brate\b/.test(query);
+      const MIN_STARTS = 8;
+      // Matches the site: a pick that never reached the drafting roster is not
+      // evaluable and leaves both rankings, so a "worst pick" answer cannot be
+      // a player who was traded away before week 1.
+      const evaluable = (p) => p.rostered !== 0;
+      const rateReady = (p) =>
+        p.starts >= MIN_STARTS && p.valuePerStart !== null;
+      if (/never start|not started|traded away|benched/.test(query))
+        for (const n of rows
+          .filter((p) => p.starts === 0)
+          .sort((a, b) => a.round - b.round || a.pick - b.pick)
+          .slice(0, 10))
+          push("drafts", "draftPickNeverStarted", {
+            manager: name(n.uid),
+            ...compact(n, [
+              "season",
+              "player",
+              "pos",
+              "round",
+              "pick",
+              "rostered",
+            ]),
+            neverRostered: n.rostered === 0,
+          });
       if (/bargain/.test(query)) rows = rows.filter((p) => p.round >= 8);
-      if (/disappointment|bust/.test(query))
+      if (/disappointment|bust|worst/.test(query))
         rows = rows
-          .filter((p) => p.round <= 3)
-          .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity));
-      else
+          .filter((p) => p.round <= 3 && evaluable(p))
+          .filter((p) => !perStart || rateReady(p))
+          .sort((a, b) =>
+            perStart
+              ? (a.valuePerStart ?? Infinity) - (b.valuePerStart ?? Infinity)
+              : (a.value ?? Infinity) - (b.value ?? Infinity),
+          );
+      else {
+        if (/value|bargain/.test(query)) rows = rows.filter(evaluable);
+        if (perStart) rows = rows.filter(rateReady);
         rows.sort((a, b) =>
-          /value|bargain/.test(query)
-            ? (b.value ?? -Infinity) - (a.value ?? -Infinity)
-            : (b.pts ?? -Infinity) - (a.pts ?? -Infinity),
+          perStart
+            ? (b.valuePerStart ?? -Infinity) - (a.valuePerStart ?? -Infinity)
+            : /value|bargain/.test(query)
+              ? (b.value ?? -Infinity) - (a.value ?? -Infinity)
+              : (b.pts ?? -Infinity) - (a.pts ?? -Infinity),
         );
+      }
       for (const p of rows.slice(0, 10))
         push("drafts", "draftPickContribution", {
           manager: name(p.uid),
@@ -1132,8 +1177,13 @@ function buildContext(question, selection = {}, history = []) {
             "pick",
             "pts",
             "starts",
+            "scoredStarts",
             "rostered",
+            "ptsPerStart",
             "value",
+            "roundMean",
+            "valuePerStart",
+            "roundPerStart",
           ]),
         });
     }
