@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simulated Fantasy Lines · League Wrapped</title>
+    <meta
+      name="description"
+      content="Simulated fantasy matchup forecasts, fair lines, and player point props for your league."
+    />
+    <link rel="stylesheet" href="matchups.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#matchup-board">Skip to matchups</a>
+    <div class="page-shell">
+      <nav class="topbar" aria-label="Page navigation">
+        <a class="brand" href="index.html" data-dashboard-link
+          >League Wrapped <span>/ Matchup Lab</span></a
+        >
+        <a class="back-link" href="index.html" data-dashboard-link
+          >← Dashboard</a
+        >
+      </nav>
+      <header class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Simulated fantasy lines</span>
+          <h1>Your league.<br />A different angle.</h1>
+          <p>
+            Explore matchup forecasts, point totals, and player props for any
+            public NFL Sleeper league. Each team uses the strongest legal
+            projected lineup from its full current roster. Every line is a model
+            estimate with no bookmaker margin.
+          </p>
+        </div>
+        <div class="hero-note">
+          <span class="note-mark" aria-hidden="true">∑</span>
+          <strong>Fantasy points, not NFL game lines.</strong>
+          <p>
+            These are full-week simulations for your fantasy league, not in-game
+            win probabilities, sportsbook prices, or a place to wager.
+          </p>
+          <a href="#model-details">See how the model works ↓</a>
+        </div>
+      </header>
+      <form
+        id="league-form"
+        class="league-form"
+        aria-label="Choose a Sleeper league"
+      >
+        <div class="field league-input-field">
+          <label for="league-input">Sleeper league ID or URL</label>
+          <input
+            id="league-input"
+            type="text"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="e.g. 1381121078079795200 or sleeper.com/leagues/…"
+            aria-describedby="league-help"
+            required
+          />
+        </div>
+        <button id="load-league" type="submit">Load league</button>
+        <button id="our-league" type="button">Our league</button>
+        <p id="league-help">
+          Load any public NFL fantasy league on Sleeper. The page URL updates so
+          you can share its forecast board.
+        </p>
+      </form>
+      <section class="toolbar" aria-label="Forecast filters">
+        <div class="field">
+          <label for="week-select">Forecast week</label
+          ><select id="week-select" disabled>
+            <option>Loading weeks…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="manager-select">Manager</label
+          ><select id="manager-select" disabled>
+            <option value="all">All managers</option>
+          </select>
+        </div>
+        <button id="refresh-data" class="refresh-button" type="button">
+          Refresh Sleeper data <span aria-hidden="true">↻</span>
+        </button>
+      </section>
+      <p
+        id="refresh-status"
+        class="status-line"
+        role="status"
+        aria-live="polite"
+      >
+        Loading the saved forecast data…
+      </p>
+      <div id="data-meta" class="data-meta"></div>
+      <main id="matchup-board" tabindex="-1" aria-busy="true">
+        <div class="empty-state">
+          <span class="loader" aria-hidden="true"></span>
+          <h2>Building the board</h2>
+          <p>Sampling the range of possible fantasy scores.</p>
+        </div>
+      </main>
+      <section
+        id="model-details"
+        class="model-panel"
+        aria-labelledby="model-heading"
+      >
+        <div class="panel-heading">
+          <span class="eyebrow">Know the assumptions</span>
+          <h2 id="model-heading">A forecast is a distribution.</h2>
+        </div>
+        <div id="model-copy">
+          <p>
+            The model description and coverage will appear when the saved data
+            loads.
+          </p>
+        </div>
+        <div class="model-basics">
+          <div>
+            <h3>Fair lines</h3>
+            <p>
+              Moneylines split simulated tie probability evenly and convert that
+              share into American odds, with no added margin. Spread, total, and
+              prop prices exclude pushes. Win, tie, and push probabilities are
+              disclosed separately.
+            </p>
+          </div>
+          <div>
+            <h3>Current roster assumption</h3>
+            <p>
+              Each week selects the legal lineup with the highest expected
+              points from the full current roster, including the bench. Reserve
+              and taxi players are excluded. Known NFL byes are applied, and
+              future weeks hold the roster rather than submitted starters.
+              Roster changes and news can change results. Unknown playoff
+              pairings are not invented.
+            </p>
+          </div>
+          <div>
+            <h3>Reading player props</h3>
+            <p>
+              Over/under refers to fantasy points under this league’s scoring. A
+              15+ threshold means at least 15 fantasy points. Sparse
+              observations and positional priors are marked.
+            </p>
+          </div>
+        </div>
+        <p class="source-links">
+          Sources:
+          <a
+            href="https://docs.sleeper.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Public Sleeper API</a
+          >
+          ·
+          <a
+            href="https://github.com/nflverse/nfldata/blob/master/data/games.csv"
+            target="_blank"
+            rel="noopener noreferrer"
+            >NFL schedule via nflverse</a
+          >. No NFL betting lines are imported.
+        </p>
+      </section>
+      <footer>
+        League Wrapped · Matchup Lab
+        <a href="index.html" data-dashboard-link>Back to league history ↗</a>
+      </footer>
+    </div>
+    <script src="espn_league.js"></script>
+    <script src="forecast-players.js"></script>
+    <script src="matchup-data.js"></script>
+    <script src="matchup-lines.js"></script>
+    <script src="sleeper-forecast-data.js"></script>
+    <script src="matchups-ui.js"></script>
+  </body>
+</html>

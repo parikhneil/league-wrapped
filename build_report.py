@@ -420,6 +420,7 @@ def main():
     nav = " ".join(f'<a href="{f}">{esc(label)}</a>' for f, _, _, label in pages)
     if "Sleeper" in srcs:
         nav += ' <a href="players.html">Players</a>'
+        nav += ' <a href="matchups.html">Upcoming matchups</a>'
     for filename, include, title, _ in pages:
         Path(filename).write_text(
             build_page(include, seasons, title, nav), encoding="utf-8")
@@ -431,6 +432,16 @@ def main():
     if "Sleeper" in srcs:
         Path("players.html").write_text(build_players_page(all_seasons, shown, canon, nav), encoding="utf-8")
         print("Wrote players.html")
+
+    if "Sleeper" in srcs:
+        from fetch_matchup_data import build_snapshot, export_player_catalog
+        try:
+            build_snapshot()
+            export_player_catalog()
+            print("Wrote matchup-data.js (saved forecast inputs)")
+            print("Wrote forecast-players.js (public NFL player metadata)")
+        except ValueError as exc:
+            print(f"Matchup snapshot skipped: {exc}")
 
     if unmatched:
         print("\nThese ESPN managers weren't matched to a Sleeper account, so they show up as")

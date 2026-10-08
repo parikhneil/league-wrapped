@@ -24,6 +24,18 @@ test("Netlify publishes only dashboard assets, even with credentials and raw dat
   assert.equal(fs.existsSync(path.join(f.root, "dist", "unexpected.txt")), false);
 });
 
+test("every local file the public pages load is published", async () => {
+  const { PUBLIC_ASSETS } = await import("../build-netlify.mjs");
+  const published = new Set(PUBLIC_ASSETS);
+  const root = path.join(__dirname, "..");
+  for (const page of PUBLIC_ASSETS.filter((name) => name.endsWith(".html"))) {
+    const html = fs.readFileSync(path.join(root, page), "utf8");
+    for (const [, ref] of html.matchAll(/(?:src|href)="([^"#?:]+\.(?:html|js|css))"/g)) {
+      assert.ok(published.has(ref), `${page} loads ${ref}, which build-netlify.mjs does not publish`);
+    }
+  }
+});
+
 test("a Groq key accidentally embedded in a public asset fails the build before publishing", async (t) => {
   const f = await fixture(t);
   fs.writeFileSync(path.join(f.root, "index.html"), "gsk_test_placeholder_key_12345678");

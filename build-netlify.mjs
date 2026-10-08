@@ -7,6 +7,8 @@ export const PUBLIC_ASSETS = Object.freeze([
   "espn_league.js", "league-data.js", "league-stats.js", "league-ui.js", "league.css",
   "trade-analysis.js", "comeback-history.js",
   "chat-widget.js", "chat-widget.css",
+  "matchups.html", "matchups.css", "matchups-ui.js", "matchup-lines.js",
+  "sleeper-forecast-data.js", "matchup-data.js", "forecast-players.js",
 ]);
 
 export function buildPublic(rootDir) {

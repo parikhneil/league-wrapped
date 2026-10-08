@@ -26,6 +26,7 @@ jobs:
           restore-keys: league-data-
       - run: pip install requests
       - run: python fetch_sleeper_history.py
+      - run: python fetch_matchup_data.py
       - run: python fetch_nfl_opportunity.py --no-build
       - name: Reconstruct historical game-day comebacks
         run: python fetch_comeback_history.py --no-build
@@ -43,6 +44,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add report.html report_sleeper.html report_espn.html players.html espn_league.js league-data.js
+          git add report.html report_sleeper.html report_espn.html players.html espn_league.js league-data.js matchup-data.js forecast-players.js
           git diff --cached --quiet || git commit -m "Weekly update"
           git push
