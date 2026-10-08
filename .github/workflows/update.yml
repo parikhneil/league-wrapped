@@ -44,6 +44,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add report.html report_sleeper.html report_espn.html players.html espn_league.js league-data.js player_names.js matchup-data.js forecast-players.js
+          git add report.html report_sleeper.html report_espn.html players.html espn_league.js league-data.js matchup-data.js forecast-players.js
           git diff --cached --quiet || git commit -m "Weekly update"
           git push
