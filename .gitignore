@@ -1,4 +1,14 @@
 data/
+data_espn/
+data_nfl/
 __pycache__/
+.venv/
 .DS_Store
 espn_secrets.json
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.netlify/
+fetch_espn_history.py
