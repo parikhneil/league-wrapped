@@ -220,6 +220,52 @@ a {
   gap: 8px;
   flex-wrap: wrap;
 }
+.slider-field input[type="range"] {
+  /* The shared input rule gives every input a border and 9px/12px padding. On a
+     range that insets the track inside the painted box, so the thumb stops
+     short of both ends. Reset the box and paint the track and thumb directly. */
+  -webkit-appearance: none;
+  appearance: none;
+  width: 190px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.slider-field input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.slider-field input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--head);
+  background: var(--accent);
+}
+.slider-field input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.slider-field input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--head);
+  background: var(--accent);
+}
+.slider-field input[type="number"] {
+  width: 4.5em;
+  font-variant-numeric: tabular-nums;
+}
 .recap-image {
   display: block;
   width: 100%;

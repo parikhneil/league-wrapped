@@ -38,9 +38,22 @@
       chartMetric = "pf",
       chartManager = "all",
       draftSeason = "all",
+      draftMinStarts = "8",
+      draftSort = "perStart",
       moveSeason = "all",
       moveType = "all",
       moveManager = "all",
+      pickupSeason = "all",
+      pickupType = "all",
+      pickupManager = "all",
+      pickupMinStarts = "1",
+      pickupSort = "pts",
+      dropsSeason = "all",
+      dropsManager = "all",
+      dropsMinStarts = "3",
+      dropsSort = "value",
+      profilePickupSort = "pts",
+      profilePickupMinStarts = "1",
       saberSeason = "all",
       saberManager = "all",
       saberMetric = "scoringPlus",
@@ -67,6 +80,18 @@
         .join("");
     const select = (id, label, items, chosen) =>
       `<span class="select-field"><label for="${id}">${esc(label)}</label> <select id="${id}">${options(items, chosen)}</select></span>`;
+    // Range input paired with a number box so a minimum can be dragged across
+    // the whole observed span or typed exactly. `input` mirrors the pair;
+    // `change` redraws.
+    const sliderBox = (id, label, max, value) =>
+      `<span class="select-field slider-field"><label for="${id}">${esc(label)}</label> <input type="range" id="${id}" min="0" max="${esc(max)}" step="1" value="${esc(value)}"> <input type="number" id="${id}-num" min="0" max="${esc(max)}" step="1" value="${esc(value)}" aria-label="${esc(label)}, exact number"></span>`;
+    // A number box accepts anything typed, so clamp before it reaches state.
+    const clampInt = (value, min, max, fallback) => {
+      const n = Math.round(Number(value));
+      return Number.isFinite(n)
+        ? String(Math.min(Number(max), Math.max(Number(min), n)))
+        : String(fallback);
+    };
     const rosterName = (label, rid) =>
       n(
         D.sources
@@ -769,6 +794,11 @@
     function profile() {
       if (!selected) return "<p>No managers available.</p>";
       const a = D.all[selected],
+        profilePickups = pickupRows({
+          managerId: selected,
+          minStarts: profilePickupMinStarts,
+          order: profilePickupSort,
+        }),
         scores = D.scores.filter((s) => s[1] === selected),
         wins = D.games
           .filter((g) => g.winner === selected)
@@ -844,7 +874,25 @@
         table(
           ["Opponent", "Wins", "Losses", "Ties"],
           opponents.slice(0, 5).map(([u, r]) => [manager(u), ...r]),
-        )
+        ) +
+        "<h3>Best waiver pickups</h3>" +
+        `<p class="sub">${PICKUP_METHODOLOGY}</p>` +
+        '<div class="filters">' +
+        select(
+          "profile-pickup-sort",
+          "Rank by",
+          pickupSortOptions,
+          profilePickupSort,
+        ) +
+        sliderBox(
+          "profile-pickup-min-starts",
+          "Minimum starts",
+          pickupMaxStarts,
+          profilePickupMinStarts,
+        ) +
+        "</div>" +
+        pickupPerStartNote(profilePickupSort, profilePickupMinStarts) +
+        pickupTable(profilePickups, false)
       );
     }
     function weekly() {
@@ -978,80 +1026,394 @@
         )
       );
     }
+    const DRAFT_METHODOLOGY =
+      "Starter points are scored for the drafting manager only, through completed weeks and including playoffs. One table carries both measures; the Rank by filter chooses which one orders it, and any column heading can still be clicked to sort. <strong>Points/start</strong> is starter points ÷ starts against the start-weighted points per start for the same round and season — a rate, so a pick that played four good weeks is neither flattered nor penalized against one that played sixteen. <strong>Total starter points</strong> is measured against that round’s mean pick, which rewards availability. The minimum-starts filter applies to both rankings but never moves either baseline. Picks the drafting manager never started are listed separately: a player drafted and then traded or dropped before week 1 produced zero points for a reason that is not a draft mistake. Late rounds are 8+, early rounds 1–3. This measures realized roster contribution, not talent or predictive value. Active seasons are to date. Starter points and points/start are unavailable if any counted start lacks a player score, and a pick is left out of whichever ranking it has no measure for.";
+    const DRAFT_NEVER_STARTED_NOTE =
+      "Drafted picks with zero starts for the drafting manager, earliest round first. Weeks rostered counts the completed weeks the player was on that manager’s roster. Zero weeks rostered means the pick never reached the drafting manager’s roster in a counted week — an immediate trade or drop, or a gap in the imported transaction history — so it is not ranked at all; a pick that was rostered and never started still ranks by total starter points.";
+    const DRAFT_MAX_STARTS = 17;
+    const draftColumns = [
+      "Season",
+      "Pick",
+      "Round",
+      "Player",
+      "Pos",
+      "Manager",
+      "Starts",
+      "Starter points",
+      "Points/start",
+      "Vs round average",
+      "Vs round average per start",
+    ];
+    const draftCells = (p) => [
+      p.season,
+      p.pick,
+      p.round,
+      p.player,
+      p.pos || "—",
+      manager(p.uid),
+      intCell(p.starts),
+      numCell(p.pts),
+      numCell(p.ptsPerStart),
+      [signed(p.value), sortable(p.value)],
+      [signed(p.valuePerStart), sortable(p.valuePerStart)],
+    ];
+    const draftNeverColumns = [
+      "Season",
+      "Pick",
+      "Round",
+      "Player",
+      "Pos",
+      "Manager",
+      "Weeks rostered",
+      "Status",
+    ];
+    const draftNeverCells = (p) => [
+      p.season,
+      p.pick,
+      p.round,
+      p.player,
+      p.pos || "—",
+      manager(p.uid),
+      intCell(p.rostered),
+      p.rostered === 0 ? "Never rostered" : "Rostered, never started",
+    ];
+    const draftSortOptions = [
+      ["perStart", "Points per start"],
+      ["value", "Total starter points"],
+    ];
+    // Each ranking needs its own measure, so a pick only appears when the
+    // chosen one is available for it.
+    const draftMetric = { perStart: "valuePerStart", value: "value" };
     function drafts() {
+      const key = draftMetric[draftSort] || draftMetric.value;
+      const min = Number(draftMinStarts) || 0;
       const picks = D.drafts.filter(
-          (p) => draftSeason === "all" || p.season === draftSeason,
-        ),
-        late = picks
-          .filter((p) => p.round >= 8 && p.value !== null)
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 10),
-        early = picks
-          .filter((p) => p.round <= 3 && p.value !== null)
-          .sort((a, b) => a.value - b.value)
+        (p) => draftSeason === "all" || p.season === draftSeason,
+      );
+      const lateScope = (p) => p.round >= 8,
+        earlyScope = (p) => p.round <= 3;
+      // A pick that never reached the drafting manager's roster produced zero
+      // starter points for a reason the draft cannot be judged on, so neither
+      // measure ranks it. A pick that was rostered and never started is a real
+      // disappointment and stays. Both appear in the list further down.
+      const evaluable = (p) => p.rostered !== 0;
+      const meetsMin = (p) =>
+        min === 0 || (p.starts !== null && p.starts >= min);
+      const board = (scope, worstFirst) =>
+        picks
+          .filter(
+            (p) => scope(p) && evaluable(p) && meetsMin(p) && p[key] !== null,
+          )
+          .sort((a, b) => (worstFirst ? a[key] - b[key] : b[key] - a[key]))
           .slice(0, 10);
-      const rows = (ps) =>
-        ps.map((p) => [
-          p.season,
-          p.pick,
-          p.round,
-          p.player,
-          p.pos,
-          manager(p.uid),
-          p.starts ?? "—",
-          num(p.pts),
-          signed(p.value),
-        ]);
+      const lateBoard = board(lateScope, false),
+        earlyBoard = board(earlyScope, true),
+        neverStarted = picks
+          .filter((p) => p.starts === 0)
+          .sort((a, b) => a.round - b.round || a.pick - b.pick);
+      const rows = (ps) => ps.map(draftCells);
+      // An in-progress season can have no pick above the minimum; say so rather
+      // than letting the generic empty row imply there is no data at all.
+      const boardOrNote = (ranked, scope) => {
+        if (ranked.length) return table(draftColumns, rows(ranked));
+        const played = picks.filter((p) => scope(p) && p.starts !== null);
+        const best = played.length
+          ? Math.max(...played.map((p) => p.starts))
+          : 0;
+        return `<p class="sub">No pick in this selection reached ${esc(min)} starts for its drafting manager. The most any pick reached is ${esc(best)}. Lower the minimum starts or choose a completed season.</p>`;
+      };
+      // Points per start over one or two starts is a single good week, not a
+      // trend; warn as the waiver-pickup ranking does.
+      const rateNote =
+        draftSort === "perStart" && min < 3
+          ? '<p class="sub">Points per start rewards a single good week, so with a low minimum either end of this ranking can be a one-start pick. Raise the minimum starts to compare picks that actually held a lineup spot.</p>'
+          : "";
       return (
-        "<h2>Draft analysis</h2>" +
+        '<h2>Draft analysis</h2><div class="filters">' +
         select("draft-season", "Season", seasonOptions, draftSeason) +
-        '<p class="sub">Starter points are scored for the drafting manager through completed weeks, including playoffs. Value = starter points minus the mean for that draft round in the same season. Late rounds: 8+. Early rounds: 1–3. This measures realized roster contribution, not talent or predictive value. Imported ESPN picks are shown; unavailable starter scores and values are marked — and excluded from value rankings.</p>' +
+        select("draft-sort", "Rank by", draftSortOptions, draftSort) +
+        sliderBox(
+          "draft-min-starts",
+          "Minimum starts",
+          DRAFT_MAX_STARTS,
+          draftMinStarts,
+        ) +
+        "</div>" +
+        `<p class="sub">${DRAFT_METHODOLOGY}</p>` +
+        rateNote +
         "<h3>Late-round bargains</h3>" +
-        table(
-          [
-            "Season",
-            "Pick",
-            "Round",
-            "Player",
-            "Pos",
-            "Manager",
-            "Starts",
-            "Starter points",
-            "Vs round average",
-          ],
-          rows(late),
-        ) +
+        boardOrNote(lateBoard, lateScope) +
         "<h3>Early-round disappointments</h3>" +
+        boardOrNote(earlyBoard, earlyScope) +
+        "<h3>Picks the drafting manager never started</h3>" +
+        `<p class="sub">${DRAFT_NEVER_STARTED_NOTE}</p>` +
+        table(draftNeverColumns, neverStarted.map(draftNeverCells)) +
+        "<h3>Every pick</h3>" +
         table(
-          [
-            "Season",
-            "Pick",
-            "Round",
-            "Player",
-            "Pos",
-            "Manager",
-            "Starts",
-            "Starter points",
-            "Vs round average",
-          ],
-          rows(early),
-        ) +
-        "<h3>Every pick · most starter points first</h3>" +
-        table(
-          [
-            "Season",
-            "Pick",
-            "Round",
-            "Player",
-            "Pos",
-            "Manager",
-            "Starts",
-            "Starter points",
-            "Vs round average",
-          ],
-          rows(picks.slice().sort((a, b) => b.pts - a.pts)),
+          draftColumns,
+          rows(
+            picks
+              .slice()
+              .sort(
+                (a, b) =>
+                  sortable(b[key]) - sortable(a[key]) ||
+                  sortable(b.pts) - sortable(a.pts),
+              ),
+          ),
         )
       );
+    }
+    const pickupMaxStarts = Math.max(
+      1,
+      ...D.pickups.map((p) => (Number.isFinite(p.starts) ? p.starts : 0)),
+    );
+    const PICKUP_METHODOLOGY =
+      "One row per completed waiver, free-agent or commissioner acquisition. Starter points begin the week after the acquisition and stop after the week of the next recorded drop or trade away, so the figures measure only what the player produced for the manager who picked him up. Same-week points are excluded because weekly snapshots cannot establish lineup timing. Points per start divides those points by starts. Click any column heading to sort; unavailable ESPN scores are marked — and sort last.";
+    // -1e9 keeps unavailable values at the bottom of a descending sort instead
+    // of falling back to the text comparison the sort helper uses for NaN.
+    const sortable = (v) =>
+      v === null || v === undefined || !Number.isFinite(Number(v))
+        ? -1e9
+        : Number(v);
+    const numCell = (v) => [num(v), sortable(v)];
+    const intCell = (v) => [
+      v === null || v === undefined ? "—" : v,
+      sortable(v),
+    ];
+    const pickupTypeLabel = (t) =>
+      ({
+        waiver: "Waiver",
+        free_agent: "Free agent",
+        commissioner: "Commissioner",
+      })[t] || t;
+    const pickupTypeOptions = [
+      ["all", "Waivers + free agents"],
+      ["waiver", "Waivers only"],
+      ["free_agent", "Free agents only"],
+      ["commissioner", "Commissioner moves only"],
+    ];
+    const pickupSortOptions = [
+      ["pts", "Total points after pickup"],
+      ["starts", "Starts after pickup"],
+      ["perStart", "Points per start"],
+      ["recent", "Most recent"],
+    ];
+    const pickupComparators = {
+      pts: (a, b) => sortable(b.pts) - sortable(a.pts),
+      starts: (a, b) =>
+        sortable(b.starts) - sortable(a.starts) ||
+        sortable(b.pts) - sortable(a.pts),
+      perStart: (a, b) =>
+        sortable(b.ptsPerStart) - sortable(a.ptsPerStart) ||
+        sortable(b.starts) - sortable(a.starts),
+      recent: (a, b) => b.date - a.date,
+    };
+    const pickupHeld = (p) =>
+      p.exitWeek
+        ? `W${p.fromWeek}–${p.toWeek}; left in W${p.exitWeek}`
+        : p.fromWeek > p.toWeek
+          ? "No completed weeks after pickup"
+          : `W${p.fromWeek}–${p.toWeek}; still held`;
+    const pickupPerStartNote = (order, minStarts) =>
+      order === "perStart" && Number(minStarts) < 3
+        ? '<p class="sub">Points per start rewards a single good week, so the top of this ranking can be a one-start pickup. Raise the minimum-starts filter to compare players who actually held a lineup spot.</p>'
+        : "";
+    function pickupRows(opts) {
+      const {
+        season = "all",
+        type = "all",
+        managerId = "all",
+        minStarts = "0",
+        order = "pts",
+      } = opts || {};
+      const min = Number(minStarts) || 0;
+      return D.pickups
+        .filter(
+          (p) =>
+            (season === "all" || p.season === season) &&
+            (type === "all"
+              ? p.type === "waiver" || p.type === "free_agent"
+              : p.type === type) &&
+            (managerId === "all" || p.uid === managerId) &&
+            (min === 0 || (p.starts !== null && p.starts >= min)),
+        )
+        .sort(pickupComparators[order] || pickupComparators.pts);
+    }
+    function pickupTable(rows, showManager) {
+      const headers = [
+        "Season",
+        "Week",
+        "Type",
+        ...(showManager ? ["Manager"] : []),
+        "Player",
+        "Pos",
+        "Starts",
+        "Points per start",
+        "Points after pickup",
+        "Weeks rostered",
+        "Held",
+        "Dropped in the same move",
+      ];
+      return table(
+        headers,
+        rows.map((p) => [
+          p.season,
+          intCell(p.week),
+          pickupTypeLabel(p.type),
+          ...(showManager ? [manager(p.uid)] : []),
+          p.player,
+          p.pos || "—",
+          intCell(p.starts),
+          numCell(p.ptsPerStart),
+          numCell(p.pts),
+          intCell(p.rostered),
+          pickupHeld(p),
+          p.dropped || "—",
+        ]),
+      );
+    }
+    function pickupBoard() {
+      const rows = pickupRows({
+        season: pickupSeason,
+        type: pickupType,
+        managerId: pickupManager,
+        minStarts: pickupMinStarts,
+        order: pickupSort,
+      });
+      return (
+        '<h2>Best waiver pickups</h2><div class="filters">' +
+        select("pickup-season", "Season", seasonOptions, pickupSeason) +
+        select("pickup-type", "Type", pickupTypeOptions, pickupType) +
+        select("pickup-manager", "Manager", managerOptions, pickupManager) +
+        sliderBox(
+          "pickup-min-starts",
+          "Minimum starts",
+          pickupMaxStarts,
+          pickupMinStarts,
+        ) +
+        select("pickup-sort", "Rank by", pickupSortOptions, pickupSort) +
+        "</div>" +
+        `<p class="sub">${PICKUP_METHODOLOGY}</p>` +
+        pickupPerStartNote(pickupSort, pickupMinStarts) +
+        `<p class="sub">${esc(rows.length)} acquisition(s) match these filters.</p>` +
+        pickupTable(rows, true)
+      );
+    }
+    const dropMaxStarts = Math.max(
+      1,
+      ...D.drops.map((d) => (Number.isFinite(d.starts) ? d.starts : 0)),
+    );
+    const DROP_METHODOLOGY =
+      "One row per completed non-trade drop that another manager then claimed. Starter points begin the week after that claim and stop after the week of the next recorded drop or trade away, and follow the player across every roster that claimed him, so the figures measure only what the drop handed the rest of the league. If the dropping manager wins the player back, the window closes there: nothing he scores for his original roster again counts against the drop. Trades are excluded because the player never reached waivers, so nobody else had the chance to claim him, and drops nobody claimed are excluded because they cost nothing. Same-week points are excluded because weekly snapshots cannot establish lineup timing. Click any column heading to sort; unavailable ESPN scores are marked — and sort last.";
+    const DROP_ADJUSTMENT_NOTE =
+      "A kicker and a quarterback cannot be compared on raw points per start, so the adjusted column subtracts the start-weighted mean points per start at that position for the season, taken from every start in the league. A positive figure means the player was worth more per start than a replacement start at his position, which is what makes the drop expensive.";
+    const dropSortOptions = [
+      ["value", "Points per start above position"],
+      ["perStart", "Points per start"],
+      ["pts", "Total points for other teams"],
+      ["starts", "Starts for other teams"],
+      ["recent", "Most recent"],
+    ];
+    const dropComparators = {
+      value: (a, b) =>
+        sortable(b.valuePerStart) - sortable(a.valuePerStart) ||
+        sortable(b.starts) - sortable(a.starts),
+      perStart: (a, b) =>
+        sortable(b.ptsPerStart) - sortable(a.ptsPerStart) ||
+        sortable(b.starts) - sortable(a.starts),
+      pts: (a, b) => sortable(b.pts) - sortable(a.pts),
+      starts: (a, b) =>
+        sortable(b.starts) - sortable(a.starts) ||
+        sortable(b.pts) - sortable(a.pts),
+      recent: (a, b) => b.date - a.date,
+    };
+    const dropPerStartNote = (order, minStarts) =>
+      ["value", "perStart"].includes(order) && Number(minStarts) < 3
+        ? '<p class="sub">Both per-start rankings reward a single good week, so the top of this board can be a player who started once elsewhere. Raise the minimum-starts filter to compare drops that cost a lineup spot all season.</p>'
+        : "";
+    const dropClaimed = (d) =>
+      (d.reclaimedWeek
+        ? `Claimed W${d.claimedWeek}; back in W${d.reclaimedWeek}`
+        : `Claimed W${d.claimedWeek}`) +
+      (d.claims > 1 ? ` · ${d.claims} claims` : "");
+    function dropRows(opts) {
+      const {
+        season = "all",
+        managerId = "all",
+        minStarts = "0",
+        order = "value",
+      } = opts || {};
+      const min = Number(minStarts) || 0;
+      return D.drops
+        .filter(
+          (d) =>
+            (season === "all" || d.season === season) &&
+            (managerId === "all" || d.uid === managerId) &&
+            (min === 0 || (d.starts !== null && d.starts >= min)),
+        )
+        .sort(dropComparators[order] || dropComparators.value);
+    }
+    function dropTable(rows) {
+      const headers = [
+        "Season",
+        "Week",
+        "Manager who dropped",
+        "Player",
+        "Pos",
+        "Claimed by",
+        "Starts elsewhere",
+        "Points per start",
+        "Per start above position",
+        "Points for other teams",
+        "Claimed",
+      ];
+      return table(
+        headers,
+        rows.map((d) => [
+          d.season,
+          intCell(d.week),
+          manager(d.uid),
+          d.player,
+          d.pos || "—",
+          raw(d.claimants.map((u) => esc(n(u))).join(", ") || "—"),
+          intCell(d.starts),
+          numCell(d.ptsPerStart),
+          numCell(d.valuePerStart),
+          numCell(d.pts),
+          dropClaimed(d),
+        ]),
+      );
+    }
+    function dropBoard() {
+      const rows = dropRows({
+        season: dropsSeason,
+        managerId: dropsManager,
+        minStarts: dropsMinStarts,
+        order: dropsSort,
+      });
+      return (
+        '<h2>Worst drops</h2><div class="filters">' +
+        select("drops-season", "Season", seasonOptions, dropsSeason) +
+        select("drops-manager", "Manager", managerOptions, dropsManager) +
+        sliderBox(
+          "drops-min-starts",
+          "Minimum starts",
+          dropMaxStarts,
+          dropsMinStarts,
+        ) +
+        select("drops-sort", "Rank by", dropSortOptions, dropsSort) +
+        "</div>" +
+        `<p class="sub">${DROP_METHODOLOGY}</p>` +
+        `<p class="sub">${DROP_ADJUSTMENT_NOTE}</p>` +
+        dropPerStartNote(dropsSort, dropsMinStarts) +
+        `<p class="sub">${esc(rows.length)} drop(s) match these filters.</p>` +
+        dropTable(rows)
+      );
+    }
+    // The waiver tab holds both halves of the wire: what managers gained from
+    // it and what they handed to it.
+    function waiverBoard() {
+      return pickupBoard() + dropBoard();
     }
     function moves() {
       const filtered = D.moves.filter(
@@ -1076,7 +1438,7 @@
           moveType,
         ) +
         select("move-manager", "Manager", managerOptions, moveManager) +
-        '</div><p class="sub">Completed transactions only. Subsequent starter points begin the week after acquisition and stop after the week of the next recorded drop or trade away. Same-week points are excluded because weekly snapshots cannot establish lineup timing. ESPN coverage depends on retained historical data; unavailable scores are marked —.</p>' +
+        '</div><p class="sub">Completed transactions only, newest first. This is the raw transaction log: acquisitions share one cell with their points so trades, picks and FAAB stay together, which means the column cannot be sorted. For a sortable one-row-per-acquisition view, use the Best waiver pickups section. Subsequent starter points begin the week after acquisition and stop after the week of the next recorded drop or trade away. Same-week points are excluded because weekly snapshots cannot establish lineup timing. ESPN coverage depends on retained historical data; unavailable scores are marked —.</p>' +
         table(
           [
             "Season",
@@ -1638,6 +2000,7 @@
       records: ["Records & rivalries", records],
       comebacks: ["Largest comebacks", comebacks],
       drafts: ["Draft analysis", drafts],
+      pickups: ["Waiver wire", waiverBoard],
       moves: ["Trades & waivers", moves],
       trades: ["Trade analyzer", tradeAnalyzer],
       charts: ["Season charts", charts],
@@ -1657,13 +2020,15 @@
                 ? saberManager
                 : section === "opportunity"
                   ? opportunityManager
-                  : section === "moves"
-                    ? moveManager
-                    : section === "charts"
-                      ? chartManager
-                      : ["profile", "sharing"].includes(section)
-                        ? selected || "all"
-                        : "all";
+                  : section === "pickups"
+                    ? pickupManager
+                    : section === "moves"
+                      ? moveManager
+                      : section === "charts"
+                        ? chartManager
+                        : ["profile", "sharing"].includes(section)
+                          ? selected || "all"
+                          : "all";
       const chatSeason =
         section === "trades"
           ? tradeSeason
@@ -1677,11 +2042,13 @@
                   ? opportunitySeason
                   : section === "drafts"
                     ? draftSeason
-                    : section === "moves"
-                      ? moveSeason
-                      : section === "weekly"
-                        ? D.weeks[weekIndex]?.season
-                        : "all";
+                    : section === "pickups"
+                      ? pickupSeason
+                      : section === "moves"
+                        ? moveSeason
+                        : section === "weekly"
+                          ? D.weeks[weekIndex]?.season
+                          : "all";
       el.dataset.chatSeason =
         String(chatSeason || "all").match(/^\d{4}/)?.[0] || "all";
       el.dataset.chatGames = section === "starts" ? startsGames : "all";
@@ -1758,6 +2125,25 @@
         sort(e.target);
       }
     };
+    el.oninput = (e) => {
+      if (e.target.type === "range") {
+        const box = el.querySelector(`#${e.target.id}-num`);
+        if (box) box.value = e.target.value;
+        return;
+      }
+      // Typing moves the paired slider live, but the redraw waits for `change`
+      // so the box keeps focus while a two-digit value is entered.
+      if (e.target.type === "number" && e.target.id.endsWith("-num")) {
+        const range = el.querySelector(`#${e.target.id.slice(0, -4)}`);
+        if (range && e.target.value !== "")
+          range.value = clampInt(
+            e.target.value,
+            range.min,
+            range.max,
+            range.value,
+          );
+      }
+    };
     el.onchange = (e) => {
       switch (e.target.id) {
         case "profile-manager":
@@ -1820,6 +2206,20 @@
         case "draft-season":
           draftSeason = e.target.value;
           break;
+        case "draft-min-starts":
+          draftMinStarts = e.target.value;
+          break;
+        case "draft-sort":
+          draftSort = e.target.value;
+          break;
+        case "draft-min-starts-num":
+          draftMinStarts = clampInt(
+            e.target.value,
+            0,
+            DRAFT_MAX_STARTS,
+            draftMinStarts,
+          );
+          break;
         case "move-season":
           moveSeason = e.target.value;
           break;
@@ -1828,6 +2228,63 @@
           break;
         case "move-manager":
           moveManager = e.target.value;
+          break;
+        case "pickup-season":
+          pickupSeason = e.target.value;
+          break;
+        case "pickup-type":
+          pickupType = e.target.value;
+          break;
+        case "pickup-manager":
+          pickupManager = e.target.value;
+          break;
+        case "pickup-min-starts":
+          pickupMinStarts = e.target.value;
+          break;
+        case "pickup-min-starts-num":
+          pickupMinStarts = clampInt(
+            e.target.value,
+            0,
+            pickupMaxStarts,
+            pickupMinStarts,
+          );
+          break;
+        case "pickup-sort":
+          pickupSort = e.target.value;
+          break;
+        case "drops-season":
+          dropsSeason = e.target.value;
+          break;
+        case "drops-manager":
+          dropsManager = e.target.value;
+          break;
+        case "drops-min-starts":
+          dropsMinStarts = e.target.value;
+          break;
+        case "drops-min-starts-num":
+          dropsMinStarts = clampInt(
+            e.target.value,
+            0,
+            dropMaxStarts,
+            dropsMinStarts,
+          );
+          break;
+        case "drops-sort":
+          dropsSort = e.target.value;
+          break;
+        case "profile-pickup-sort":
+          profilePickupSort = e.target.value;
+          break;
+        case "profile-pickup-min-starts":
+          profilePickupMinStarts = e.target.value;
+          break;
+        case "profile-pickup-min-starts-num":
+          profilePickupMinStarts = clampInt(
+            e.target.value,
+            0,
+            pickupMaxStarts,
+            profilePickupMinStarts,
+          );
           break;
         case "chart-source":
           chartSource = e.target.value;

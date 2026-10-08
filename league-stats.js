@@ -482,6 +482,8 @@
       games: [],
       drafts: [],
       moves: [],
+      pickups: [],
+      drops: [],
       comebacks: [],
       saber: [],
       saberCareer: [],
@@ -796,20 +798,33 @@
       const contribution = (pid, rid, from = 1, to = cutoff) => {
         let pts = 0,
           starts = 0,
+          scoredStarts = 0,
           rostered = 0;
         for (let w = from; w <= Math.min(to, cutoff); w++) {
           const m = s.weeks[w - 1]?.find((x) => x.roster_id === rid);
           if (!m || !s.weeks[w - 1]?.some((x) => Number(x.points) !== 0))
             continue;
           if (s.src === "ESPN" && !m.players_points)
-            return { pts: null, starts: null, rostered: null };
+            return {
+              pts: null,
+              starts: null,
+              scoredStarts: null,
+              rostered: null,
+            };
           if (m.players?.includes(pid)) rostered++;
           if (m.starters?.includes(pid)) {
             starts++;
-            pts += Number(m.players_points?.[pid]) || 0;
+            const score = m.players_points?.[pid];
+            // House rule (see summarizePlayerStarts): a start stays countable
+            // even when its score is not. One unscored start makes the total
+            // unavailable rather than silently zero.
+            if (validScore(score)) {
+              scoredStarts++;
+              if (pts !== null) pts += Number(score);
+            } else pts = null;
           }
         }
-        return { pts, starts, rostered };
+        return { pts, starts, scoredStarts, rostered };
       };
       for (const p of s.picks || []) {
         const available =
@@ -843,10 +858,15 @@
             (x) =>
               (x.status_updated || x.created) > when && x.drops?.[pid] === rid,
           );
+          const toWeek = exit ? Number(exit.leg) : cutoff;
           return {
             player: playerName(pid),
+            pos: s.players?.[pid]?.position || "",
             uid: owner[rid],
-            ...contribution(pid, rid, from, exit ? Number(exit.leg) : cutoff),
+            fromWeek: from,
+            toWeek,
+            exitWeek: exit ? Number(exit.leg) : null,
+            ...contribution(pid, rid, from, toWeek),
           };
         });
         D.moves.push({
@@ -859,11 +879,82 @@
           adds,
           drops: Object.entries(t.drops || {}).map(([pid, rid]) => ({
             player: playerName(pid),
+            pos: s.players?.[pid]?.position || "",
             uid: owner[rid],
           })),
           picks: t.draft_picks || [],
           budget: t.waiver_budget || [],
         });
+        // The mirror of a pickup: once a player is dropped onto waivers, follow
+        // him to every roster that claimed him afterwards and total what he
+        // produced there. Trades are excluded because the player never reached
+        // waivers, so nobody else had the chance to claim him.
+        if (t.type === "trade") continue;
+        for (const [pid, rid] of Object.entries(t.drops || {})) {
+          if (!owner[rid]) continue;
+          // A dropper can win the player back. Production after that belongs to
+          // them again, so it never counts against the drop.
+          const back = transactions.find(
+            (x) => (x.status_updated || x.created) > when && x.adds?.[pid] === rid,
+          );
+          const until = back ? Number(back.leg) : cutoff;
+          let pts = 0,
+            starts = 0,
+            scoredStarts = 0,
+            claims = 0,
+            firstWeek = null;
+          const claimants = [];
+          for (const x of transactions) {
+            const xWhen = x.status_updated || x.created;
+            const to = x.adds?.[pid];
+            if (
+              xWhen <= when ||
+              to === undefined ||
+              String(to) === String(rid) ||
+              !owner[to]
+            )
+              continue;
+            const addLeg = Number(x.leg) || 1;
+            if (addLeg > until) continue;
+            const exit = transactions.find(
+              (y) =>
+                (y.status_updated || y.created) > xWhen && y.drops?.[pid] === to,
+            );
+            const toWeek = Math.min(exit ? Number(exit.leg) : until, until);
+            const v = contribution(pid, to, addLeg + 1, toWeek);
+            claims++;
+            if (firstWeek === null) firstWeek = addLeg;
+            if (!claimants.includes(owner[to])) claimants.push(owner[to]);
+            // House rule, as in contribution: one unscored start makes the
+            // total unavailable rather than silently low.
+            if (v.pts === null) pts = null;
+            else if (pts !== null) pts += v.pts;
+            if (v.starts === null) starts = null;
+            else if (starts !== null) starts += v.starts;
+            if (v.scoredStarts === null) scoredStarts = null;
+            else if (scoredStarts !== null) scoredStarts += v.scoredStarts;
+          }
+          if (!claims) continue;
+          D.drops.push({
+            id: `${label}|${t.transaction_id}|${playerName(pid)}`,
+            season: label,
+            src: s.src,
+            type: t.type,
+            week: t.leg,
+            date: when,
+            uid: owner[rid],
+            player: playerName(pid),
+            pos: normalizeSlot(s.players?.[pid]?.position || ""),
+            claims,
+            claimants,
+            claimedWeek: firstWeek,
+            reclaimedWeek: back ? Number(back.leg) : null,
+            starts,
+            scoredStarts,
+            pts,
+            details_incomplete: t.details_incomplete || false,
+          });
+        }
       }
     }
     Object.assign(D.names, namesOverride);
@@ -886,14 +977,90 @@
       );
     }
     D.saberCareer = Object.values(career).map(summarizeSaber);
+    // One pass to accumulate each season+round baseline, one to assign.
+    // The per-start baseline is start-weighted, so it needs no minimum-starts
+    // threshold: a 1-start pick moves it in proportion to its single start.
+    const roundBaselines = new Map();
     for (const d of D.drafts) {
-      const peers = D.drafts.filter(
-        (x) => x.season === d.season && x.round === d.round && x.pts !== null,
-      );
+      if (d.pts === null) continue;
+      const key = `${d.season}|${d.round}`;
+      const a = roundBaselines.get(key) || {
+        sum: 0,
+        picks: 0,
+        startedPts: 0,
+        starts: 0,
+      };
+      a.sum += d.pts;
+      a.picks++;
+      if (d.starts > 0) {
+        a.startedPts += d.pts;
+        a.starts += d.starts;
+      }
+      roundBaselines.set(key, a);
+    }
+    for (const d of D.drafts) {
+      const a = roundBaselines.get(`${d.season}|${d.round}`);
+      d.roundMean = a && a.picks ? a.sum / a.picks : null;
+      d.roundPerStart = a && a.starts ? a.startedPts / a.starts : null;
+      d.ptsPerStart = d.pts === null || !d.starts ? null : d.pts / d.starts;
       d.value =
-        d.pts === null || !peers.length
+        d.pts === null || d.roundMean === null ? null : d.pts - d.roundMean;
+      d.valuePerStart =
+        d.ptsPerStart === null || d.roundPerStart === null
           ? null
-          : d.pts - peers.reduce((sum, x) => sum + x.pts, 0) / peers.length;
+          : d.ptsPerStart - d.roundPerStart;
+    }
+    // One row per non-trade acquisition so waiver and free-agent pickups can be
+    // ranked and sorted on their own. Trades are excluded because the trade
+    // analyzer already values them as packages.
+    D.pickups = D.moves
+      .filter((m) => m.type !== "trade")
+      .flatMap((m) =>
+        m.adds
+          .filter((a) => a.uid)
+          .map((a) => ({
+            id: `${m.season}|${m.id}|${a.player}`,
+            season: m.season,
+            type: m.type,
+            week: m.week,
+            date: m.date,
+            uid: a.uid,
+            player: a.player,
+            pos: a.pos || "",
+            starts: a.starts,
+            scoredStarts: a.scoredStarts,
+            rostered: a.rostered,
+            pts: a.pts,
+            ptsPerStart: a.pts === null || !a.starts ? null : a.pts / a.starts,
+            fromWeek: a.fromWeek,
+            toWeek: a.toWeek,
+            exitWeek: a.exitWeek,
+            dropped: m.drops.map((d) => d.player).join(", "),
+            details_incomplete: m.details_incomplete || false,
+          })),
+      );
+    // Comparing a dropped kicker to a dropped quarterback on raw points per
+    // start only measures scoring position. The baseline is the start-weighted
+    // mean points per start at that position that season, taken from every
+    // start in the league, so a drop is judged against what a replacement
+    // start at the same position was worth.
+    const posBaselines = new Map();
+    for (const w of D.playerStartWeeks) {
+      if (!validScore(w.points)) continue;
+      const key = `${w.season}|${w.position || ""}`;
+      const a = posBaselines.get(key) || { pts: 0, starts: 0 };
+      a.pts += Number(w.points);
+      a.starts++;
+      posBaselines.set(key, a);
+    }
+    for (const d of D.drops) {
+      const a = posBaselines.get(`${d.season}|${d.pos || ""}`);
+      d.posPerStart = a && a.starts ? a.pts / a.starts : null;
+      d.ptsPerStart = d.pts === null || !d.starts ? null : d.pts / d.starts;
+      d.valuePerStart =
+        d.ptsPerStart === null || d.posPerStart === null
+          ? null
+          : d.ptsPerStart - d.posPerStart;
     }
     D.rivalries = [];
     const ids = Object.keys(D.all);
