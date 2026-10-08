@@ -19,6 +19,7 @@
   summary { cursor:pointer; margin:8px 0; font-weight:600; }
   #pages { margin:18px 0 4px; border-bottom:1px solid var(--line); padding-bottom:10px; }
   #pages button { font-size:15px; font-weight:600; }
+  #pages a { display:inline-block; font-size:15px; font-weight:600; color:var(--fg); padding:8px 12px; text-decoration:none; border:1px solid var(--line); border-radius:6px; margin:4px 0; }
   #plist button { display:block; width:100%; max-width:420px; text-align:left; margin:0; border-radius:0; border-top:0; }
   #plist button:first-child { border-top:1px solid var(--line); }
   small { color:var(--muted); font-weight:normal; }
@@ -28,7 +29,7 @@
 <input id="q" placeholder="League ID or username" autocomplete="off">
 <button id="go">Load league</button><button id="reset">Our league</button>
 <div id="picker"></div>
-<div id="pages"><button data-page="standings" class="on">Standings</button><button data-page="players">Players</button></div>
+<div id="pages"><button data-page="standings" class="on">Standings</button><button data-page="players">Players</button><a id="matchups-link" href="matchups.html">Upcoming matchups</a></div>
 <div id="tabs"></div>
 <p id="status"></p>
 <div id="out"></div>
@@ -285,19 +286,25 @@ function view(mode) {
 
 async function run(id) {
   $('picker').innerHTML = ''; $('tabs').innerHTML = '';
-  players = null; loadToken++; $('pout').innerHTML = ''; $('plist').innerHTML = '';
+  players = null; const token = ++loadToken; $('pout').innerHTML = ''; $('plist').innerHTML = '';
   $('pstatus').textContent = 'Loading…';
   try {
     const sl = await loadHistory(id), isDefault = id === DEFAULT_LEAGUE;
+    if (token !== loadToken) return;
     sl.forEach(s => s.src = 'Sleeper');
     const espn = isDefault ? (window.ESPN_SEASONS || []) : [];
     loaded = {sl, espn, isDefault};
+    $('matchups-link').href = isDefault ? 'matchups.html' : `matchups.html?league=${encodeURIComponent(id)}`;
+    const url = new URL(location.href);
+    isDefault ? url.searchParams.delete('league') : url.searchParams.set('league', id);
+    history.replaceState(null, '', url);
     if (espn.length) $('tabs').innerHTML = [['combined', 'Combined'], ['sleeper', 'Sleeper'], ['espn', 'ESPN']]
       .map(([m, t]) => `<button data-mode="${m}">${t}</button>`).join('');
     view('combined');
     setStatus(`Loaded ${sl.length} Sleeper season(s)${espn.length ? ` + ${espn.length} ESPN season(s)` : ''}. Click a column header to sort.`);
     if (page === 'players') preparePlayers();
   } catch (e) {
+    if (token !== loadToken) return;
     setStatus(`Couldn't load that league (${e.message}). Check the ID and try again.`);
   }
 }
@@ -341,5 +348,8 @@ document.addEventListener('click', e => {
     return asc ? c : -c;
   }).forEach(r => tb.appendChild(r));
 });
-run(DEFAULT_LEAGUE);
+const linkedLeague = new URL(location.href).searchParams.get('league');
+const initialLeague = /^\d{1,24}$/.test(linkedLeague || '') && !/^0+$/.test(linkedLeague) ? linkedLeague : DEFAULT_LEAGUE;
+if (initialLeague !== DEFAULT_LEAGUE) $('q').value = initialLeague;
+run(initialLeague);
 </script></body></html>
