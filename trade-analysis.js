@@ -193,7 +193,13 @@
         missing(week);
         continue;
       }
-      if (pair.length !== 2 || same(pair[0].roster_id, pair[1].roster_id) || !pair.every((row) => score(row.points))) {
+      // A playoff bye can arrive as a single scored row: ESPN gives the bye
+      // its own matchup_id, so the null-matchup bye branch above never sees
+      // it. A recorded lineup with scored players still establishes what the
+      // player contributed, because an opponent row is needed for a win or a
+      // loss, not for starter points.
+      const paired = pair.length === 2 && !same(pair[0].roster_id, pair[1].roster_id);
+      if (!(paired || pair.length === 1) || !pair.every((row) => score(row.points))) {
         missing(week);
         continue;
       }
@@ -261,6 +267,49 @@
     };
   }
 
+  // Troll trades: two managers swap a set of players and hand the identical
+  // set straight back within one scoring week, leaving both rosters exactly
+  // where they started. Neither leg is a real transfer, and scoring them is
+  // worse than dropping them. The first leg is closed by the reversal and
+  // shows an empty package; the second has no later transfer to close it, so
+  // it credits a full rest-of-season package to whoever was handed back what
+  // they already owned. A reversal that takes longer than a week is a real
+  // pair of trades with real scoring weeks in between and is left alone.
+  function reversals(trades) {
+    const dropped = new Set();
+    const tag = (trade) => `${trade.season}|${trade.id}`;
+    const groups = new Map();
+    for (const trade of trades) {
+      if (trade.detailsIncomplete) continue;
+      const uids = trade.participants.map((p) => p.uid).sort();
+      if (uids.length < 2) continue;
+      const key = `${trade.season}|${uids.join('|')}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(trade);
+    }
+    const packages = (trade, side) => new Map(trade.participants.map((p) =>
+      [p.uid, [...new Set(p[side].map((asset) => String(asset.playerId)))].sort().join(',')]));
+    for (const list of groups.values()) {
+      const ordered = list.slice().sort((a, b) =>
+        a.date !== null && b.date !== null ? a.date - b.date : a.week - b.week);
+      for (let i = 0; i < ordered.length; i++) {
+        for (let j = i + 1; j < ordered.length; j++) {
+          const first = ordered[i], second = ordered[j];
+          if (dropped.has(tag(first)) || dropped.has(tag(second))) continue;
+          if (second.week < first.week || second.week - first.week > 1) continue;
+          const out = packages(first, 'received'), back = packages(second, 'given');
+          // Picks and FAAB have no player ids, so a pick-only pair is not a
+          // reversal of anything this module can see.
+          if (![...out.values()].some((ids) => ids)) continue;
+          if (out.size !== back.size) continue;
+          if ([...out].some(([uid, ids]) => back.get(uid) !== ids)) continue;
+          dropped.add(tag(first));
+          dropped.add(tag(second));
+        }
+      }
+    }
+    return dropped;
+  }
   function analyze(seasons, namesOverride = {}) {
     const trades = [], names = {};
     let excludedFuture = 0, excludedPending = 0, missingTiming = 0;
@@ -370,13 +419,15 @@
           coverage: {
             hasPostTradeWeeks: cutoff > item.week,
             missingStarterWeeks, timingNote,
-            pointsNote: "Starter points from the first full week after the trade, while the receiving team retained each player. Transfer weeks are excluded; picks and FAAB have no point value.",
+            pointsNote: "Starter points from the first full week after the trade, while the receiving team retained each player. Transfer weeks are excluded; picks and FAAB have no point value. A playoff bye week still counts whatever the lineup scored in it.",
           },
         });
       }
     }
-    trades.sort((a, b) => Number(b.year) - Number(a.year) || b.week - a.week || (b.date || 0) - (a.date || 0) || a.id.localeCompare(b.id));
-    return { trades, names, coverage: { trades: trades.length, excludedFuture, excludedPending, missingTiming } };
+    const trolled = reversals(trades);
+    const kept = trades.filter((trade) => !trolled.has(`${trade.season}|${trade.id}`));
+    kept.sort((a, b) => Number(b.year) - Number(a.year) || b.week - a.week || (b.date || 0) - (a.date || 0) || a.id.localeCompare(b.id));
+    return { trades: kept, names, coverage: { trades: kept.length, excludedFuture, excludedPending, missingTiming, excludedReversals: trolled.size } };
   }
 
   // Trade skill as the record shows it. Every comparable trade contributes the
@@ -386,6 +437,42 @@
   // Multi-team trades compare a package against the average of the others.
   // Trades the analyzer could not compare are counted but never scored, so an
   // incomplete import cannot be mistaken for an even swap.
+  // One participant's margin in one trade: the starter points their incoming
+  // package produced, against the average of what the other sides received.
+  // rankManagers aggregates these and the manager profile lists them one by
+  // one, so the definition lives here once rather than in the UI.
+  function participantMargin(trade, p) {
+    const others = (trade.participants || []).filter((other) => other.uid !== p.uid);
+    if (!trade.balance?.comparable || !others.length) return { others, against: null, margin: null };
+    const against = sum(others.map((other) => other.receivedPoints)) / others.length;
+    return { others, against, margin: p.receivedPoints - against };
+  }
+
+  // Every trade one manager took part in, in the order analyze() sorted them
+  // (newest first). A trade the analyzer could not compare is kept with a null
+  // margin rather than dropped, so this list and the ranking's trade count
+  // agree on how many trades there were, and nothing reads as an even swap.
+  function managerTrades(trades, uid) {
+    const rows = [];
+    for (const trade of trades || []) {
+      const me = (trade.participants || []).find((p) => p.uid === uid);
+      if (!me) continue;
+      const { others, against, margin } = participantMargin(trade, me);
+      rows.push({
+        id: trade.id, season: trade.season, year: trade.year, week: trade.week,
+        opponents: others.map((other) => other.uid),
+        received: me.received.map((asset) => asset.player),
+        given: me.given.map((asset) => asset.player),
+        receivedPoints: margin === null ? null : me.receivedPoints,
+        against, margin,
+        extras: me.picksReceived.length + me.picksGiven.length +
+          me.budgetReceived.length + me.budgetGiven.length,
+        reason: trade.balance?.reason || null,
+      });
+    }
+    return rows;
+  }
+
   function rankManagers(trades) {
     const rows = new Map();
     const rowFor = (uid) => {
@@ -401,13 +488,11 @@
       const participants = trade.participants || [];
       for (const p of participants) {
         const row = rowFor(p.uid);
-        const others = participants.filter((other) => other.uid !== p.uid);
-        if (!trade.balance?.comparable || !others.length) {
+        const { others, against, margin } = participantMargin(trade, p);
+        if (margin === null) {
           row.uncomparable++;
           continue;
         }
-        const against = sum(others.map((other) => other.receivedPoints)) / others.length;
-        const margin = p.receivedPoints - against;
         row.trades++;
         row.net += margin;
         row.received += p.receivedPoints;
@@ -444,5 +529,5 @@
     return ranked;
   }
 
-  return { analyze, rankManagers };
+  return { analyze, rankManagers, managerTrades };
 });

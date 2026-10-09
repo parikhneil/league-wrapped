@@ -895,7 +895,8 @@
           // A dropper can win the player back. Production after that belongs to
           // them again, so it never counts against the drop.
           const back = transactions.find(
-            (x) => (x.status_updated || x.created) > when && x.adds?.[pid] === rid,
+            (x) =>
+              (x.status_updated || x.created) > when && x.adds?.[pid] === rid,
           );
           const until = back ? Number(back.leg) : cutoff;
           let pts = 0,
@@ -918,7 +919,8 @@
             if (addLeg > until) continue;
             const exit = transactions.find(
               (y) =>
-                (y.status_updated || y.created) > xWhen && y.drops?.[pid] === to,
+                (y.status_updated || y.created) > xWhen &&
+                y.drops?.[pid] === to,
             );
             const toWeek = Math.min(exit ? Number(exit.leg) : until, until);
             const v = contribution(pid, to, addLeg + 1, toWeek);
@@ -1003,12 +1005,75 @@
       d.roundMean = a && a.picks ? a.sum / a.picks : null;
       d.roundPerStart = a && a.starts ? a.startedPts / a.starts : null;
       d.ptsPerStart = d.pts === null || !d.starts ? null : d.pts / d.starts;
+      // Per week of actual tenure, not per week of the season: the question is
+      // what the pick returned for each week the drafter carried him, so a
+      // player held two weeks is not charged for the fifteen he was gone.
+      d.ptsPerWeek = d.pts === null || !d.rostered ? null : d.pts / d.rostered;
       d.value =
         d.pts === null || d.roundMean === null ? null : d.pts - d.roundMean;
       d.valuePerStart =
         d.ptsPerStart === null || d.roundPerStart === null
           ? null
           : d.ptsPerStart - d.roundPerStart;
+    }
+    // Round alone compares a quarterback to a kicker, and position alone
+    // compares the first quarterback off the board to the last. A pick's peers
+    // are therefore the PEERS picks taken nearest to it at the same position in
+    // the same season, by draft slot. The peer set is leave-one-out, so a thin
+    // position cannot score a pick against itself, and a pick with fewer than
+    // MIN_PEERS usable peers gets no baseline rather than a flattering zero.
+    const PEERS = 4,
+      MIN_PEERS = 2;
+    const byPosition = new Map();
+    for (const d of D.drafts) {
+      const key = `${d.season}|${d.pos || ""}`;
+      if (!byPosition.has(key)) byPosition.set(key, []);
+      byPosition.get(key).push(d);
+    }
+    for (const group of byPosition.values()) {
+      const order = group.slice().sort((a, b) => a.pick - b.pick);
+      order.forEach((d, i) => {
+        d.posRank = i + 1;
+        const peers = order
+          .filter((_, j) => j !== i)
+          .sort(
+            (a, b) =>
+              Math.abs(a.pick - d.pick) - Math.abs(b.pick - d.pick) ||
+              a.pick - b.pick,
+          )
+          .slice(0, PEERS);
+        const scored = peers.filter((p) => p.pts !== null),
+          started = scored.filter((p) => p.starts > 0),
+          peerStarts = started.reduce((n, p) => n + p.starts, 0),
+          held = scored.filter((p) => p.rostered > 0),
+          peerWeeks = held.reduce((n, p) => n + p.rostered, 0);
+        d.peers = peers.length;
+        d.peerMean =
+          scored.length < MIN_PEERS
+            ? null
+            : scored.reduce((n, p) => n + p.pts, 0) / scored.length;
+        d.peerPerStart =
+          started.length < MIN_PEERS || !peerStarts
+            ? null
+            : started.reduce((n, p) => n + p.pts, 0) / peerStarts;
+        // Weighted by weeks held for the same reason the per-start baseline is
+        // weighted by starts: a peer who was carried all year should count for
+        // more of the baseline than one dropped in week two.
+        d.peerPerWeek =
+          held.length < MIN_PEERS || !peerWeeks
+            ? null
+            : held.reduce((n, p) => n + p.pts, 0) / peerWeeks;
+        d.peerValue =
+          d.pts === null || d.peerMean === null ? null : d.pts - d.peerMean;
+        d.peerValuePerStart =
+          d.ptsPerStart === null || d.peerPerStart === null
+            ? null
+            : d.ptsPerStart - d.peerPerStart;
+        d.peerValuePerWeek =
+          d.ptsPerWeek === null || d.peerPerWeek === null
+            ? null
+            : d.ptsPerWeek - d.peerPerWeek;
+      });
     }
     // One row per non-trade acquisition so waiver and free-agent pickups can be
     // ranked and sorted on their own. Trades are excluded because the trade

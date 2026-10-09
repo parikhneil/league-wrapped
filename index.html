@@ -8,20 +8,28 @@
     <link rel="stylesheet" href="chat-widget.css" />
   </head>
   <body>
-    <h1>League Wrapped</h1>
-    <p class="sub">
-      Enter a Sleeper league ID (or your Sleeper username to pick a league) to
-      see its full history.
-    </p>
-    <p class="page-links">
-      <a href="matchups.html">Upcoming matchups →</a>
-      <span class="sub">simulated spreads, totals and player props for this week</span>
-    </p>
-    <input id="q" placeholder="League ID or username" autocomplete="off" />
-    <button id="go">Load league</button><button id="reset">Our league</button>
-    <div id="picker"></div>
-    <div id="tabs"></div>
-    <p id="status"></p>
+    <header class="page-header">
+      <h1>League Wrapped</h1>
+      <div data-feature-nav></div>
+    </header>
+    <!-- Loading a league, the platform switch and its status line all belong to
+         the main menu. syncMenuOnly hides this block on every other tab, so a
+         feature page is just that feature. -->
+    <div id="menu-only">
+      <p class="sub">
+        Enter a Sleeper league ID (or your Sleeper username to pick a league) to
+        see its full history.
+      </p>
+      <p class="page-links">
+        <a href="matchups.html">Upcoming matchups →</a>
+        <span class="sub">simulated spreads, totals and player props for this week</span>
+      </p>
+      <input id="q" placeholder="League ID or username" autocomplete="off" />
+      <button id="go">Load league</button><button id="reset">Our league</button>
+      <div id="picker"></div>
+      <div id="tabs"></div>
+      <p id="status"></p>
+    </div>
     <div id="out"></div>
     <script src="espn_league.js"></script>
     <script src="league-data.js"></script>
@@ -154,6 +162,18 @@
           .querySelectorAll("#tabs button")
           .forEach((b) => b.classList.toggle("on", b.dataset.mode === mode));
       }
+
+      // LeagueUI owns which section is showing, so the page follows its
+      // data-active-section instead of tracking the tabs itself.
+      const menuOnly = $("menu-only");
+      const syncMenuOnly = () => {
+        menuOnly.hidden = ($("out").dataset.activeSection || "home") !== "home";
+      };
+      new MutationObserver(syncMenuOnly).observe($("out"), {
+        attributes: true,
+        attributeFilter: ["data-active-section"],
+      });
+      syncMenuOnly();
 
       async function run(id) {
         const version = ++requestVersion;

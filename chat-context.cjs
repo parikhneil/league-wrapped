@@ -11,19 +11,21 @@ const ComebackHistory = require("./comeback-history.js");
 const SNAPSHOT = path.join(__dirname, "league-data.js");
 const MAX_FACTS = 14000;
 const SECTION_LABELS = Object.freeze({
-  overview: "Overview",
+  overview: "This season",
+  alltime: "All-time standings",
   profile: "Manager profiles",
   starts: "Most started players",
   trades: "Trade analyzer",
   comebacks: "Largest comebacks",
-  saber: "Stat Lab",
+  saber: "Sabermetrics",
   opportunity: "xFP & opportunity",
   luck: "Luck rankings",
   weekly: "Weekly wrapped",
   records: "Records & rivalries",
   drafts: "Draft analysis",
-  moves: "Trades & waivers",
-  charts: "Season charts",
+  pickups: "Waiver wire",
+  moves: "Transaction log",
+  charts: "Season comparisons",
   sharing: "Recap cards",
   players: "Player history",
 });
@@ -36,7 +38,9 @@ const GUIDE = Object.freeze({
   comebacks:
     "Ranks final fantasy winners by largest AVAILABLE checkpoint deficit. reconstructed_day_boundary uses corrected final starter points from earlier NFL game dates, before later-day kickoff; exact historical game mapping and reconciled lineups required. It can miss intraday swings; observed live snapshots give finer coverage. Use finalMatchupScore for the final result; the last trace checkpoint may precede the last NFL game. Fantasy odds unavailable without recorded/imported named fantasy source; NFL-game wp is not fantasy odds. Never infer percentages from deficits or invent 1%->100%. Standings recovery is separate: worst weekly rank to final rank.",
   overview:
-    "Combines saved ESPN/Sleeper seasons; aliases join the same person, successor owners stay separate. Platform regular-season standings: win%=(W+0.5T)/(W+L+T), PF breaks ties. PF=points for; PA=against; PPG=PF/games. Active seasons, titles/finals/playoffs are provisional, to date.",
+    "The newest loaded season only: its standings, regular-season weeks played, highest weekly scores and the leader per platform entry. A combined view keeps one table per platform rather than merging them. Standings use win%=(W+0.5T)/(W+L+T), PF breaks ties. PF=points for; PA=against. An active season is provisional, to date. All-time records are the alltime section, not this one.",
+  alltime:
+    "Combines saved ESPN/Sleeper seasons; aliases join the same person, successor owners stay separate. Platform regular-season standings: win%=(W+0.5T)/(W+L+T), PF breaks ties. PF=points for; PA=against; PPG=PF/games. Active seasons, titles/finals/playoffs are provisional, to date. Also champions by season, highest single-week scores, regular/playoff/consolation head-to-head and per-season standings.",
   profile:
     "Manager click shows career/season records, titles, Stat Lab, opportunity, biggest wins, toughest opponents and top10 starters. Toughest opponent sorts regular-season losses descending, wins ascending. Regular/playoff/consolation head-to-head are separate.",
   starts:
@@ -52,6 +56,8 @@ const GUIDE = Object.freeze({
     "Records include high/low regular-season scores, largest margin, closest games, within-season win streaks (ties break streak), standings comebacks and rivalries. Comeback=worst weekly rank-final available rank, ranked using win percentage then PF. Competitive rivalries require>=2 meetings and minimize absolute win imbalance/meetings, breaking ties by more meetings. Postseason head-to-head is separate from regular-season rivalries.",
   drafts:
     "Draft contribution=starter points for ORIGINAL drafting manager, completed weeks INCLUDING playoffs; not NFL points or preseason expectation. value=pts-roundMean(season+round mean pick). valuePerStart=pts/starts-roundPerStart(season+round start-weighted), needs starts>=8. starts=0 listed separately, never rate-ranked; rostered=0 excluded from BOTH rankings. Bargains round>=8; disappointments rounds1-3; active seasons to date.",
+  pickups:
+    "Waiver wire = pickup and drop boards; completed moves only. Points start the week AFTER acquisition or claim and end after the week of the next recorded drop/trade away; same-week omitted because snapshots cannot establish lineup timing. Trades and unclaimed drops excluded. perStart=pts/starts.",
   moves:
     "Only completed trades/waivers/free-agent moves. Acquisition contribution starts week AFTER acquisition, ends after week of next recorded drop/trade away, counts actual weekly starts, includes completed playoffs. Same-week points omitted because snapshots cannot establish lineup timing; preseason moves recorded week1 also exclude week1. Picks/FAAB transfers shown when available. ESPN historical transaction completeness is unverified; missing items/lineups marked unavailable. Contribution is raw starter points, not replacement-level value or proof of trade quality.",
   charts:

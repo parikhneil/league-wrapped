@@ -8,6 +8,7 @@
   if (document.getElementById("league-guide")) return;
   const sections = new Set([
     "overview",
+    "alltime",
     "profile",
     "starts",
     "trades",
@@ -18,6 +19,7 @@
     "weekly",
     "records",
     "drafts",
+    "pickups",
     "moves",
     "charts",
     "sharing",
@@ -182,7 +184,7 @@
     }
     const page =
       document.querySelector(
-        `#out .feature-tabs button[data-section="${s.section}"]`,
+        `.feature-tabs button[data-section="${s.section}"]`,
       )?.textContent || (s.section === "players" ? "Players" : "Overview");
     const season = s.season === "all" ? "all seasons" : s.season;
     const platform = s.platform === "all" ? "all platforms" : s.platform;
@@ -311,20 +313,20 @@
         )
           continue;
         const target = document.querySelector(
-          `#out .feature-tabs button[data-section="${source.section}"]`,
+          `.feature-tabs button[data-section="${source.section}"]`,
         );
         if (target) {
           const b = button("lg-source", source.label.slice(0, 120));
           b.onclick = () => {
             document
               .querySelector(
-                `#out .feature-tabs button[data-section="${source.section}"]`,
+                `.feature-tabs button[data-section="${source.section}"]`,
               )
               ?.click();
             hide();
             document
               .querySelector(
-                `#out .feature-tabs button[data-section="${source.section}"]`,
+                `.feature-tabs button[data-section="${source.section}"]`,
               )
               ?.focus();
           };

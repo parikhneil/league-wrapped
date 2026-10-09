@@ -12,6 +12,7 @@ const REFUSAL =
   "I can help with this league, the dashboard, and fantasy football statistics. Ask about a manager, matchup, metric, draft, or transaction.";
 const SECTIONS = new Set([
   "overview",
+  "alltime",
   "profile",
   "starts",
   "trades",
@@ -22,6 +23,7 @@ const SECTIONS = new Set([
   "weekly",
   "records",
   "drafts",
+  "pickups",
   "moves",
   "charts",
   "sharing",
@@ -35,6 +37,7 @@ const ASSETS = new Map([
     "report_espn.html",
     "report_sleeper.html",
     "players.html",
+    "matchups.html",
   ].map((name) => [`/${name}`, [name, "text/html; charset=utf-8"]]),
   ...[
     "espn_league.js",
@@ -44,8 +47,13 @@ const ASSETS = new Map([
     "comeback-history.js",
     "league-ui.js",
     "chat-widget.js",
+    "matchups-ui.js",
+    "matchup-lines.js",
+    "matchup-data.js",
+    "sleeper-forecast-data.js",
+    "forecast-players.js",
   ].map((name) => [`/${name}`, [name, "text/javascript; charset=utf-8"]]),
-  ...["league.css", "chat-widget.css"].map((name) => [
+  ...["league.css", "chat-widget.css", "matchups.css"].map((name) => [
     `/${name}`,
     [name, "text/css; charset=utf-8"],
   ]),

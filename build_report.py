@@ -239,7 +239,9 @@ def build_page(include, seasons, title, nav_html):
     chat_script = Path("chat-widget.js").read_text()
     return (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(title)}</title>'
-            f'<style>{css}</style></head><body><h1>{esc(title)}</h1><nav>{nav_html}</nav>'
+            f'<style>{css}</style></head><body>'
+            f'<header class="page-header"><h1>{esc(title)}</h1><div data-feature-nav></div></header>'
+            f'<nav>{nav_html}</nav>'
             '<p class="sub">Saved snapshot. Active season results are provisional. <a href="index.html">Live dashboard</a></p>'
             f'<div id="out"></div><script>{scripts}</script><script>'
             f'LeagueUI.mount(document.getElementById("out"), {payload});</script>'
