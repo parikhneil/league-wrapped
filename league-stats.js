@@ -766,9 +766,16 @@
         ((map[b] ??= {})[a] ??= [0, 0, 0])[1]++;
       };
       if (s.src === "Sleeper") {
+        // Only games both teams entered still in title contention count as
+        // playoffs: Sleeper tags placement games (3rd, 5th place) with p > 1,
+        // the same games ESPN labels WINNERS_CONSOLATION_LADDER.
         for (const m of s.bracket || [])
           if (Number.isInteger(m.w) && Number.isInteger(m.l))
-            addBracket(D.playoffH2h, m.w, m.l);
+            addBracket(
+              m.p && m.p !== 1 ? D.consolationH2h : D.playoffH2h,
+              m.w,
+              m.l,
+            );
         for (const m of s.losersBracket || [])
           if (Number.isInteger(m.w) && Number.isInteger(m.l))
             addBracket(D.consolationH2h, m.w, m.l);
@@ -1127,20 +1134,32 @@
           ? null
           : d.ptsPerStart - d.posPerStart;
     }
+    // Rivalries: regular-season games plus title-contention playoff games
+    // (D.playoffH2h). Consolation and placement games are left out.
     D.rivalries = [];
     const ids = Object.keys(D.all);
     ids.forEach((a, i) =>
       ids.slice(i + 1).forEach((b) => {
-        const r = D.h2h[a]?.[b];
-        if (r) {
+        const reg = D.h2h[a]?.[b],
+          po = D.playoffH2h[a]?.[b];
+        if (reg || po) {
+          const r = reg || [0, 0, 0],
+            p = po || [0, 0, 0],
+            w = r[0] + p[0],
+            l = r[1] + p[1],
+            t = r[2] + p[2];
           D.rivalries.push({
             a,
             b,
-            w: r[0],
-            l: r[1],
-            t: r[2],
-            games: r.reduce((x, y) => x + y, 0),
-            balance: Math.abs(r[0] - r[1]),
+            w,
+            l,
+            t,
+            games: w + l + t,
+            balance: Math.abs(w - l),
+            playoffW: p[0],
+            playoffL: p[1],
+            playoffT: p[2],
+            playoffGames: p[0] + p[1] + p[2],
           });
         }
       }),
@@ -1153,7 +1172,9 @@
   function rivalryBoards(rivalries, { minCompetitive = 2, minOneSided = 3 } = {}) {
     const pct = (r) => (r.w + r.t / 2) / r.games;
     const lead = (r) =>
-      r.w >= r.l ? { ...r } : { ...r, a: r.b, b: r.a, w: r.l, l: r.w };
+      r.w >= r.l
+        ? { ...r }
+        : { ...r, a: r.b, b: r.a, w: r.l, l: r.w, playoffW: r.playoffL, playoffL: r.playoffW };
     const competitive = rivalries
       .filter((r) => r.games >= minCompetitive)
       .sort((a, b) => a.balance / a.games - b.balance / b.games || b.games - a.games);

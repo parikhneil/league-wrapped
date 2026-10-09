@@ -1331,7 +1331,14 @@
           .sort((a, b) => b.margin - a.margin)[0],
         boards = root.LeagueStats.rivalryBoards(D.rivalries),
         rivals = boards.competitive,
-        rivalRow = (r) => [manager(r.a), manager(r.b), `${r.w}-${r.l}-${r.t}`, r.games];
+        rivalRow = (r) => [
+          manager(r.a),
+          manager(r.b),
+          `${r.w}-${r.l}-${r.t}`,
+          r.games,
+          r.playoffGames ? `${r.playoffW}-${r.playoffL}${r.playoffT ? `-${r.playoffT}` : ""}` : "",
+        ],
+        rivalNote = " Records count regular-season games plus playoff games where both teams were still in title contention; consolation and placement games (like 3rd place) are left out. Playoffs shows the playoff part of the record.";
       return (
         "<h2>Records and rivalries</h2>" +
         `<p>Largest regular-season victory: ${biggest ? `${esc(n(biggest.winner))} over ${esc(n(biggest.loser))}, ${num(biggest.margin)} points (${esc(biggest.season)}, Week ${biggest.week}).` : "No decided games available."}</p>` +
@@ -1391,19 +1398,19 @@
             .slice(0, 15)
             .map((c) => [manager(c.uid), c.season, c.from, c.to, c.gain]),
         ) +
-        '<h3>Most competitive rivalries</h3><p class="sub">At least two meetings, ordered by the smallest win imbalance as a fraction of meetings, then most meetings. Records include ties.</p>' +
+        '<h3>Most competitive rivalries</h3><p class="sub">At least two meetings, ordered by the smallest win imbalance as a fraction of meetings, then most meetings. Records include ties.' + rivalNote + '</p>' +
         table(
-          ["Manager", "Opponent", "Record", "Meetings"],
+          ["Manager", "Opponent", "Record", "Meetings", "Playoffs"],
           rivals.slice(0, 15).map(rivalRow),
         ) +
-        `<h3>Most one-sided rivalries</h3><p class="sub">At least ${boards.minOneSided} meetings, ordered by the leading manager's win percentage (ties count as half), then most meetings. The leading manager is listed first.</p>` +
+        `<h3>Most one-sided rivalries</h3><p class="sub">At least ${boards.minOneSided} meetings, ordered by the leading manager's win percentage (ties count as half), then most meetings. The leading manager is listed first.${rivalNote}</p>` +
         table(
-          ["Leader", "Opponent", "Record", "Meetings"],
+          ["Leader", "Opponent", "Record", "Meetings", "Playoffs"],
           boards.oneSided.slice(0, 15).map(rivalRow),
         ) +
-        '<h3>Most frequent rivalries</h3><p class="sub">The pairs who have played each other the most, then the closest records. The manager with the better record is listed first.</p>' +
+        '<h3>Most frequent rivalries</h3><p class="sub">The pairs who have played each other the most, then the closest records. The manager with the better record is listed first.' + rivalNote + '</p>' +
         table(
-          ["Manager", "Opponent", "Record", "Meetings"],
+          ["Manager", "Opponent", "Record", "Meetings", "Playoffs"],
           boards.frequent.slice(0, 15).map(rivalRow),
         )
       );
