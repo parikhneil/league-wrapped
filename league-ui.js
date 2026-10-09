@@ -1329,12 +1329,9 @@
       const biggest = D.games
           .filter((g) => g.winner)
           .sort((a, b) => b.margin - a.margin)[0],
-        rivals = D.rivalries
-          .filter((r) => r.games >= 2)
-          .sort(
-            (a, b) =>
-              a.balance / a.games - b.balance / b.games || b.games - a.games,
-          );
+        boards = root.LeagueStats.rivalryBoards(D.rivalries),
+        rivals = boards.competitive,
+        rivalRow = (r) => [manager(r.a), manager(r.b), `${r.w}-${r.l}-${r.t}`, r.games];
       return (
         "<h2>Records and rivalries</h2>" +
         `<p>Largest regular-season victory: ${biggest ? `${esc(n(biggest.winner))} over ${esc(n(biggest.loser))}, ${num(biggest.margin)} points (${esc(biggest.season)}, Week ${biggest.week}).` : "No decided games available."}</p>` +
@@ -1397,14 +1394,17 @@
         '<h3>Most competitive rivalries</h3><p class="sub">At least two meetings, ordered by the smallest win imbalance as a fraction of meetings, then most meetings. Records include ties.</p>' +
         table(
           ["Manager", "Opponent", "Record", "Meetings"],
-          rivals
-            .slice(0, 15)
-            .map((r) => [
-              manager(r.a),
-              manager(r.b),
-              `${r.w}-${r.l}-${r.t}`,
-              r.games,
-            ]),
+          rivals.slice(0, 15).map(rivalRow),
+        ) +
+        `<h3>Most one-sided rivalries</h3><p class="sub">At least ${boards.minOneSided} meetings, ordered by the leading manager's win percentage (ties count as half), then most meetings. The leading manager is listed first.</p>` +
+        table(
+          ["Leader", "Opponent", "Record", "Meetings"],
+          boards.oneSided.slice(0, 15).map(rivalRow),
+        ) +
+        '<h3>Most frequent rivalries</h3><p class="sub">The pairs who have played each other the most, then the closest records. The manager with the better record is listed first.</p>' +
+        table(
+          ["Manager", "Opponent", "Record", "Meetings"],
+          boards.frequent.slice(0, 15).map(rivalRow),
         )
       );
     }
@@ -2484,6 +2484,8 @@
               `<button data-group="${i}"${i === active ? ' class="on"' : ""} aria-expanded="${i === active}">${esc(label)}</button>`,
           )
           .join("") +
+        // The Matchup Lab is its own page, so this is a link, not a group.
+        '<a class="nav-page-link" href="matchups.html">Betting lines</a>' +
         "</div>" +
         groups
           .map(([label, members], i) =>

@@ -1147,7 +1147,27 @@
     );
     return D;
   }
-  const api = { analyze, rate, optimizeLineup, summarizePlayerStarts };
+  // Rivalry boards from D.rivalries (regular-season paired games).
+  // One-sided needs minOneSided meetings so a single 2-0 pair can't top it.
+  // One-sided and frequent rows are oriented so the leading manager comes first.
+  function rivalryBoards(rivalries, { minCompetitive = 2, minOneSided = 3 } = {}) {
+    const pct = (r) => (r.w + r.t / 2) / r.games;
+    const lead = (r) =>
+      r.w >= r.l ? { ...r } : { ...r, a: r.b, b: r.a, w: r.l, l: r.w };
+    const competitive = rivalries
+      .filter((r) => r.games >= minCompetitive)
+      .sort((a, b) => a.balance / a.games - b.balance / b.games || b.games - a.games);
+    const oneSided = rivalries
+      .filter((r) => r.games >= minOneSided && r.balance > 0)
+      .map(lead)
+      .sort((a, b) => pct(b) - pct(a) || b.games - a.games);
+    const frequent = rivalries
+      .filter((r) => r.games > 0)
+      .map(lead)
+      .sort((a, b) => b.games - a.games || a.balance / a.games - b.balance / b.games);
+    return { competitive, oneSided, frequent, minOneSided };
+  }
+  const api = { analyze, rate, optimizeLineup, summarizePlayerStarts, rivalryBoards };
   if (typeof module !== "undefined") module.exports = api;
   root.LeagueStats = api;
 })(typeof window !== "undefined" ? window : globalThis);

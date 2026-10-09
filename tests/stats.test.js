@@ -574,3 +574,19 @@ test("peers never cross a season or a platform", () => {
   assert.equal(byLabel("2032 (Sleeper)", "p1").peers, 4);
   assert.equal(byLabel("2032 (ESPN)", "p1").peers, 4);
 });
+
+test("rivalry boards rank one-sided and frequent pairings with the leader first", () => {
+  const { rivalryBoards } = require("../league-stats.js");
+  const r = (a, b, w, l, t = 0) => ({ a, b, w, l, t, games: w + l + t, balance: Math.abs(w - l) });
+  const boards = rivalryBoards([
+    r("A", "B", 2, 2), // even, 4 meetings
+    r("C", "D", 0, 3), // D sweeps C in 3
+    r("E", "F", 2, 0), // lopsided but only 2 meetings
+    r("G", "H", 3, 1), // 4 meetings, 3-1
+    r("I", "J", 1, 0), // one meeting
+  ]);
+  assert.deepEqual(boards.oneSided.map((x) => `${x.a}>${x.b} ${x.w}-${x.l}`), ["D>C 3-0", "G>H 3-1"]);
+  assert.deepEqual(boards.frequent.slice(0, 2).map((x) => `${x.a}-${x.b}`), ["A-B", "G-H"]);
+  assert.equal(boards.frequent.length, 5);
+  assert.deepEqual(boards.competitive.map((x) => `${x.a}-${x.b}`), ["A-B", "G-H", "C-D", "E-F"]);
+});
