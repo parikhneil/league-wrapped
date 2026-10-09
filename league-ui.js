@@ -2070,6 +2070,45 @@
       g.method === "reconstructed_day_boundary"
         ? "Between NFL game days"
         : "Recorded live snapshot";
+    function playoffs() {
+      const brackets = D.brackets || [];
+      const roundName = (i, total) =>
+        i === total - 1 ? "Final" : i === total - 2 ? "Semifinals" : total === 3 ? "First round" : `Round ${i + 1}`;
+      const team = (t, winner, bye) => {
+        if (!t) return '<div class="bracket-team bye-slot">Bye</div>';
+        const state = bye ? "" : winner == null ? "" : t.uid === winner ? " win" : " loss";
+        return (
+          `<div class="bracket-team${state}"><span class="seed">${t.seed ?? ""}</span>` +
+          `<button class="manager" data-manager="${esc(t.uid)}">${esc(n(t.uid))}</button>` +
+          `<span class="score">${bye || t.pts == null || !Number.isFinite(t.pts) ? "" : esc(t.pts.toFixed(2))}</span></div>`
+        );
+      };
+      const bracket = (b) =>
+        `<h3>${esc(b.season)}${b.champion ? ` · Champion: ${esc(n(b.champion))} 🏆` : b.complete ? "" : " · in progress"}</h3>` +
+        '<div class="bracket-scroll"><div class="bracket">' +
+        b.rounds
+          .map(
+            (games, i) =>
+              `<div class="bracket-round"><div class="bracket-round-name">${esc(roundName(i, b.rounds.length))}</div><div class="bracket-games">` +
+              games
+                .map(
+                  (g) =>
+                    `<div class="bracket-game${g.bye ? " is-bye" : ""}">${team(g.teams[0], g.winner, g.bye)}${team(g.teams[1], g.winner, g.bye)}</div>`,
+                )
+                .join("") +
+              "</div></div>",
+          )
+          .join("") +
+        (b.champion
+          ? `<div class="bracket-round champion-round"><div class="bracket-round-name">Champion</div><div class="bracket-games"><div class="bracket-champion">🏆 <button class="manager" data-manager="${esc(b.champion)}">${esc(n(b.champion))}</button></div></div></div>`
+          : "") +
+        "</div></div>";
+      return (
+        "<h2>Playoff history</h2>" +
+        '<p class="sub">Only games where both teams could still win the title; third-place and other placement games are left out. The number before each name is the seed, from final regular-season standings (record, then points for). Byes appear in the first round.</p>' +
+        (brackets.length ? brackets.map(bracket).join("") : '<p class="sub">No playoff games have been played in the loaded seasons yet.</p>')
+      );
+    }
     function comebacks() {
       const seasons = D.sources.filter(
           (s) =>
@@ -2447,6 +2486,7 @@
       alltime: ["All-time standings", allTime],
       charts: ["Season comparisons", charts],
       records: ["Records & rivalries", records],
+      playoffs: ["Playoff history", playoffs],
       comebacks: ["Largest comebacks", comebacks],
       saber: ["Sabermetrics", sabermetrics],
       opportunity: ["xFP & opportunity", opportunity],
@@ -2460,7 +2500,7 @@
       ["Current season", ["overview", "weekly"]],
       ["Managers", ["profile", "starts", "sharing"]],
       ["Roster building", ["drafts", "pickups", "trades", "moves"]],
-      ["League history", ["alltime", "charts", "records", "comebacks"]],
+      ["League history", ["alltime", "playoffs", "charts", "records", "comebacks"]],
       ["Stat Lab", ["saber", "opportunity", "luck"]],
     ];
     const groupOf = (id) =>

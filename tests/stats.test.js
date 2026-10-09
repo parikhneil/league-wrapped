@@ -615,3 +615,44 @@ test("rivalries add only title-contention playoff games; placement games are con
   const flipped = rivalryBoards([{ a: "x", b: "y", w: 0, l: 3, t: 0, games: 3, balance: 3, playoffW: 0, playoffL: 1, playoffT: 0, playoffGames: 1 }]);
   assert.deepEqual([flipped.oneSided[0].a, flipped.oneSided[0].playoffW, flipped.oneSided[0].playoffL], ["y", 1, 0]);
 });
+
+test("playoff brackets keep only title games, seed by standings, and show byes", () => {
+  const { playoffBrackets } = require("../league-stats.js");
+  const roster = (id, wins, fpts) => ({ roster_id: id, owner_id: `u${id}`, settings: { wins, losses: 14 - wins, fpts } });
+  const week = (pairs) =>
+    pairs.flatMap(([a, pa, b, pb], i) => [
+      { roster_id: a, matchup_id: i + 1, points: pa },
+      { roster_id: b, matchup_id: i + 1, points: pb },
+    ]);
+  const weeks = Array.from({ length: 17 }, () => []);
+  weeks[14] = week([[4, 120, 5, 110], [3, 100, 6, 130]]);
+  weeks[15] = week([[1, 140, 4, 100], [2, 90, 6, 95]]);
+  weeks[16] = week([[1, 150, 6, 120], [4, 99, 2, 101]]);
+  const sleeper = {
+    src: "Sleeper",
+    league: { season: "2025", status: "complete", settings: { playoff_week_start: 15 } },
+    // Seeds by wins then points: 1..6 are rosters 1..6; 7 missed the playoffs.
+    rosters: [roster(1, 11, 1800), roster(2, 11, 1700), roster(3, 9, 1600), roster(4, 8, 1650), roster(5, 8, 1600), roster(6, 7, 1900), roster(7, 2, 1000)],
+    bracket: [
+      { r: 1, m: 1, t1: 4, t2: 5, w: 4, l: 5 },
+      { r: 1, m: 2, t1: 3, t2: 6, w: 6, l: 3 },
+      { r: 2, m: 3, t1: 1, t2: 4, w: 1, l: 4 },
+      { r: 2, m: 4, t1: 2, t2: 6, w: 6, l: 2 },
+      { r: 2, m: 5, t1: 5, t2: 3, w: 5, l: 3, p: 5 },
+      { r: 3, m: 6, t1: 1, t2: 6, w: 1, l: 6, p: 1, t1_from: { w: 3 }, t2_from: { w: 4 } },
+      { r: 3, m: 7, t1: 4, t2: 2, w: 2, l: 4, p: 3, t1_from: { l: 3 }, t2_from: { l: 4 } },
+    ],
+    weeks,
+  };
+  const [b] = playoffBrackets([sleeper]);
+  assert.equal(b.champion, "u1");
+  assert.deepEqual(b.rounds.map((r) => r.length), [4, 2, 1], "two byes + two games, two semis, one final");
+  const label = (g) => (g.bye ? `bye ${g.teams[0].seed}` : g.teams.map((t) => `${t.seed}:${t.pts}`).join(" v "));
+  assert.deepEqual(b.rounds[0].map(label), ["bye 1", "4:120 v 5:110", "bye 2", "3:100 v 6:130"]);
+  assert.deepEqual(b.rounds[1].map(label), ["1:140 v 4:100", "2:90 v 6:95"]);
+  assert.deepEqual(b.rounds[2].map(label), ["1:150 v 6:120"], "the 3rd-place game is left out");
+  // A season still in progress with a projected (undecided) bracket is hidden.
+  const live = { ...sleeper, league: { ...sleeper.league, season: "2026", status: "in_season" },
+    bracket: sleeper.bracket.map((m) => ({ ...m, w: null, l: null })) };
+  assert.equal(playoffBrackets([live]).length, 0);
+});

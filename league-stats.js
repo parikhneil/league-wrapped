@@ -1134,6 +1134,7 @@
           ? null
           : d.ptsPerStart - d.posPerStart;
     }
+    D.brackets = playoffBrackets(seasons);
     // Rivalries: regular-season games plus title-contention playoff games
     // (D.playoffH2h). Consolation and placement games are left out.
     D.rivalries = [];
@@ -1169,6 +1170,130 @@
   // Rivalry boards from D.rivalries (regular-season paired games).
   // One-sided needs minOneSided meetings so a single 2-0 pair can't top it.
   // One-sided and frequent rows are oriented so the leading manager comes first.
+  // Championship brackets: only games both teams entered still in title
+  // contention (Sleeper winners-bracket games without a placement p > 1, ESPN
+  // WINNERS_BRACKET weeks). Seeds are final regular-season standings, wins then
+  // points for, the order both platforms seed by default. A season appears once
+  // it is complete or a title game has been decided, so a projected bracket for
+  // a season still in progress is never shown as if it were real.
+  function playoffBrackets(seasons) {
+    const out = [];
+    for (const s of seasons || []) {
+      const L = s.league || {},
+        start = L.settings?.playoff_week_start || 15,
+        owner = {},
+        pf = (r) => (Number(r.settings?.fpts) || 0) + (Number(r.settings?.fpts_decimal) || 0) / 100;
+      (s.rosters || []).forEach((r) => (owner[r.roster_id] = r.owner_id));
+      const seed = {};
+      (s.rosters || [])
+        .slice()
+        .sort(
+          (a, b) =>
+            (Number(b.settings?.wins) || 0) - (Number(a.settings?.wins) || 0) ||
+            (Number(a.settings?.losses) || 0) - (Number(b.settings?.losses) || 0) ||
+            pf(b) - pf(a),
+        )
+        .forEach((r, i) => (seed[r.roster_id] = i + 1));
+      const entry = (rid, pts = null) =>
+        rid == null ? null : { uid: owner[rid] ?? null, rosterId: rid, seed: seed[rid] ?? null, pts };
+      const pointsIn = (week, a, b) => {
+        const rows = s.weeks?.[week - 1] || [],
+          ra = rows.find((m) => m.roster_id === a),
+          rb = rows.find((m) => m.roster_id === b);
+        return ra && rb && ra.matchup_id != null && ra.matchup_id === rb.matchup_id
+          ? [Number(ra.points), Number(rb.points)]
+          : [null, null];
+      };
+      const rounds = [];
+      if (s.src === "ESPN") {
+        (s.weeks || []).forEach((wk, i) => {
+          if (i + 1 < start) return;
+          const groups = {};
+          for (const m of wk || [])
+            if (m.bracket === "WINNERS_BRACKET" && m.matchup_id != null)
+              (groups[m.matchup_id] ??= []).push(m);
+          const games = Object.values(groups).map((p) => {
+            if (p.length === 1) return { teams: [entry(p[0].roster_id), null], winner: p[0].roster_id, bye: true };
+            const [a, b] = p,
+              pa = Number(a.points),
+              pb = Number(b.points),
+              played = pa || pb;
+            return {
+              teams: [entry(a.roster_id, played ? pa : null), entry(b.roster_id, played ? pb : null)],
+              winner: !played || pa === pb ? null : pa > pb ? a.roster_id : b.roster_id,
+            };
+          });
+          if (games.length) rounds.push(games);
+        });
+      } else {
+        const title = (s.bracket || []).filter((m) => !(m.p && m.p !== 1));
+        const byRound = {};
+        for (const m of title) (byRound[Number(m.r) || 1] ??= []).push(m);
+        Object.keys(byRound)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .forEach((r) => {
+            rounds.push(
+              byRound[r].map((m) => {
+                const [pa, pb] = pointsIn(start + r - 1, m.t1, m.t2);
+                return {
+                  teams: [entry(m.t1, pa), entry(m.t2, pb)],
+                  winner: Number.isInteger(m.w) ? m.w : null,
+                };
+              }),
+            );
+          });
+        // Teams entering after round 1 had a bye: show them in round 1 too.
+        if (rounds.length > 1) {
+          const inFirst = new Set(rounds[0].flatMap((g) => g.teams.filter(Boolean).map((t) => t.rosterId)));
+          for (const g of rounds[1])
+            for (const t of g.teams)
+              if (t && !inFirst.has(t.rosterId))
+                rounds[0].push({ teams: [entry(t.rosterId), null], winner: t.rosterId, bye: true });
+        }
+      }
+      const decided = rounds.some((games) => games.some((g) => !g.bye && g.winner != null));
+      if (!rounds.length || !(L.status === "complete" || decided)) continue;
+      // Order each round so a game sits between the two games that fed it.
+      for (let k = rounds.length - 2; k >= 0; k--) {
+        const next = rounds[k + 1],
+          used = new Set(),
+          ordered = [];
+        for (const g of next)
+          for (const t of g.teams) {
+            const i = rounds[k].findIndex(
+              (x, j) => !used.has(j) && t && x.teams.some((y) => y && y.rosterId === t.rosterId),
+            );
+            if (i >= 0) {
+              used.add(i);
+              ordered.push(rounds[k][i]);
+            }
+          }
+        rounds[k].forEach((g, j) => !used.has(j) && ordered.push(g));
+        rounds[k] = ordered;
+      }
+      // Higher seed on top within each game.
+      for (const games of rounds)
+        for (const g of games)
+          if (g.teams[0] && g.teams[1] && (g.teams[1].seed ?? 99) < (g.teams[0].seed ?? 99))
+            g.teams.reverse();
+      const final = rounds[rounds.length - 1];
+      const champ = final.length === 1 && final[0].winner != null ? owner[final[0].winner] : null;
+      out.push({
+        season: `${L.season} (${s.src})`,
+        complete: L.status === "complete",
+        rounds: rounds.map((games) =>
+          games.map((g) => ({
+            bye: !!g.bye,
+            teams: g.teams,
+            winner: g.winner == null ? null : owner[g.winner] ?? null,
+          })),
+        ),
+        champion: champ ?? null,
+      });
+    }
+    return out.sort((a, b) => String(b.season).localeCompare(String(a.season)));
+  }
   function rivalryBoards(rivalries, { minCompetitive = 2, minOneSided = 3 } = {}) {
     const pct = (r) => (r.w + r.t / 2) / r.games;
     const lead = (r) =>
@@ -1188,7 +1313,7 @@
       .sort((a, b) => b.games - a.games || a.balance / a.games - b.balance / b.games);
     return { competitive, oneSided, frequent, minOneSided };
   }
-  const api = { analyze, rate, optimizeLineup, summarizePlayerStarts, rivalryBoards };
+  const api = { analyze, rate, optimizeLineup, summarizePlayerStarts, rivalryBoards, playoffBrackets };
   if (typeof module !== "undefined") module.exports = api;
   root.LeagueStats = api;
 })(typeof window !== "undefined" ? window : globalThis);

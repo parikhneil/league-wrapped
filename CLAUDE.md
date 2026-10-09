@@ -121,7 +121,7 @@ returns one `D` object keyed roughly by feature: `all`, `bySeason`, `saber`,
 |---|---|
 | `server.mjs` | Local dev server **and** the shared security core. Exports `loadLocalEnv`, `validateChatBody`, `isInjection`, `createGuide`, `createApp`. Serves only the `ASSETS` allowlist. Routes `GET/POST /api/chat/session` and `POST /api/chat`. |
 | `netlify/functions/league-chat.mjs` | Deployed chat API. **Imports `createGuide`, `isInjection`, `validateChatBody` from `server.mjs`** — validation is not duplicated. Sessions live in a private Netlify Blobs store with a 30-minute TTL. |
-| `chat-context.cjs` | Chooses the evidence sent to the model: parses `league-data.js`, `SECTION_LABELS`, the `GUIDE` metric definitions, `MAX_FACTS = 14000`. Exports `{buildContext, getCatalog, parseSnapshot}`. |
+| `chat-context.cjs` | Chooses the evidence sent to the model: parses `league-data.js`, `SECTION_LABELS`, the `GUIDE` metric definitions, `MAX_FACTS = 15000`. Exports `{buildContext, getCatalog, parseSnapshot}`. |
 
 Provider is **Groq** (`GROQ_API_KEY`, default `GROQ_MODEL=openai/gpt-oss-120b`),
 called with a JSON response schema. A separate "scope" completion gates

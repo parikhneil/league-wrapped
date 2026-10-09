@@ -160,6 +160,94 @@ button.on {
 .feature-nav button:focus-visible {
   outline-offset: 0;
 }
+/* Playoff brackets: one column per round, games spaced so each sits between
+   the two games that fed it. Scrolls sideways on narrow screens. */
+.bracket-scroll {
+  overflow-x: auto;
+  margin: 8px 0 28px;
+}
+.bracket {
+  display: flex;
+  gap: 28px;
+  min-width: max-content;
+}
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  width: 230px;
+}
+.bracket-round-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.bracket-games {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 14px;
+}
+.bracket-game {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.bracket-game.is-bye {
+  border-style: dashed;
+}
+.bracket-team {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  min-height: 22px;
+}
+.bracket-team + .bracket-team {
+  border-top: 1px solid var(--line);
+}
+.bracket-team .seed {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bracket-team .manager {
+  text-align: left;
+  justify-self: start;
+}
+.bracket-team .score {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+.bracket-team.win {
+  font-weight: 700;
+  background: var(--head);
+}
+.bracket-team.loss {
+  color: var(--muted);
+}
+.bracket-team.loss .manager {
+  opacity: 0.8;
+}
+.bye-slot {
+  color: var(--muted);
+  font-style: italic;
+  display: block;
+  padding-left: 38px;
+}
+.bracket-champion {
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 700;
+  text-align: center;
+}
 /* The landing menu: one card per group, every section one click away. */
 .menu-grid {
   display: grid;

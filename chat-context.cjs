@@ -9,7 +9,9 @@ const { analyze, rate, summarizePlayerStarts } = require("./league-stats.js");
 const TradeAnalysis = require("./trade-analysis.js");
 const ComebackHistory = require("./comeback-history.js");
 const SNAPSHOT = path.join(__dirname, "league-data.js");
-const MAX_FACTS = 14000;
+// Raised from 14000 when the Playoff history definition was added: every
+// request carries all GUIDE definitions, which left almost no room for evidence.
+const MAX_FACTS = 15000;
 const SECTION_LABELS = Object.freeze({
   overview: "This season",
   alltime: "All-time standings",
@@ -22,6 +24,7 @@ const SECTION_LABELS = Object.freeze({
   luck: "Luck rankings",
   weekly: "Weekly wrapped",
   records: "Records & rivalries",
+  playoffs: "Playoff history",
   drafts: "Draft analysis",
   pickups: "Waiver wire",
   moves: "Transaction log",
@@ -52,6 +55,8 @@ const GUIDE = Object.freeze({
   luck: "Weekly expected win probability=(other paired teams outscored+0.5*teams tied)/(other paired teams). Luck=actual matchup wins (ties0.5)-expected wins. Positive luck=more wins than random schedules suggest; negative=fewer. All-play W/L/T counts each comparison. Luck and xW describe schedule results, not a causal measure of manager skill.",
   weekly:
     "Weekly high scorer, closest game, upset and standings changes. Upset=loser's prior win%-winner's prior win% when positive; none in week1. Positive rank change=climbing. Postseason recaps include bye scores but do not alter regular-season luck/ranks/upsets.",
+  playoffs:
+    "Brackets of title-contention games only (no 3rd/5th place). Seed=final regular-season standings: wins, then PF. Round-1 byes shown.",
   records:
     "Records include high/low regular-season scores, largest margin, closest games, within-season win streaks (ties break streak), standings comebacks and rivalries. Comeback=worst weekly rank-final available rank, ranked using win percentage then PF. Competitive rivalries require>=2 meetings and minimize absolute win imbalance/meetings, breaking ties by more meetings. Postseason head-to-head is separate from regular-season rivalries.",
   drafts:

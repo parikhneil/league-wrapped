@@ -77,7 +77,7 @@ test("all page definitions and coverage limitations are always available within 
     "Give me every record in 2024",
   ]) {
     const result = buildContext(q);
-    assert.ok(result.facts.length <= 14000);
+    assert.ok(result.facts.length <= 15000);
     const guide = payload(result).trustedDefinitions;
     for (const section of Object.keys(getCatalog().sections))
       assert.equal(typeof guide[section], "string");
@@ -352,7 +352,7 @@ test("selected trade evidence includes every participant's before/after results 
         season: t.season,
       },
     );
-    assert.ok(result.facts.length <= 14000);
+    assert.ok(result.facts.length <= 15000);
     const actual = rowsOf(result, "tradeAnalysis")[0];
     assert.ok(actual, `Missing trade ${t.id}`);
     assert.equal(actual.id, t.id);

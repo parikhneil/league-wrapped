@@ -22,6 +22,7 @@ const SECTIONS = new Set([
   "luck",
   "weekly",
   "records",
+  "playoffs",
   "drafts",
   "pickups",
   "moves",

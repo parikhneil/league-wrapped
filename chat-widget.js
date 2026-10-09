@@ -18,6 +18,7 @@
     "luck",
     "weekly",
     "records",
+    "playoffs",
     "drafts",
     "pickups",
     "moves",
