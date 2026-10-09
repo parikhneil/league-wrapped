@@ -25,11 +25,12 @@
       n = (u) => D.names[u] || "Unknown",
       ids = Object.keys(D.all).sort((a, b) => n(a).localeCompare(n(b)));
     const tradeData = root.TradeAnalysis.analyze(seasons, names);
+    const tradeRanks = root.TradeAnalysis.rankManagers(tradeData.trades);
     const manager = (u) =>
       raw(
         `<button class="manager" data-manager="${esc(u)}">${esc(n(u))}</button>`,
       );
-    let section = el.dataset.activeSection || "overview",
+    let section = el.dataset.activeSection || "home",
       selected = ids.includes(el.dataset.selectedManager)
         ? el.dataset.selectedManager
         : ids[0],
@@ -54,6 +55,9 @@
       dropsSort = "value",
       profilePickupSort = "pts",
       profilePickupMinStarts = "1",
+      profileTradeSort = "net",
+      profileWaiverSort = "pts",
+      profileMoveView = "trades",
       saberSeason = "all",
       saberManager = "all",
       saberMetric = "scoringPlus",
@@ -106,21 +110,91 @@
       ["all", "All managers"],
       ...ids.map((u) => [u, n(u)]),
     ];
+    const cards = (items) =>
+      `<div class="cards">${items
+        .map(
+          ([k, v]) =>
+            `<div class="card"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`,
+        )
+        .join("")}</div>`;
     const metricCards = (a) =>
-      `<div class="cards">${[
+      cards([
         ["Record", rec(a)],
         ["Win %", num(root.LeagueStats.rate(a) * 100) + "%"],
         ["Titles", a.titles],
         ["Playoffs", a.po],
         ["Expected wins", num(a.expected)],
         ["Schedule luck", signed(a.actual - a.expected)],
-      ]
-        .map(
-          ([k, v]) =>
-            `<div class="card"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`,
-        )
-        .join("")}</div>`;
+      ]);
+    // This season at a glance. Every figure is a selection from what the engine
+    // already produced - the newest `D.bySeason` entries, their weeks in
+    // `D.weeks`, and `D.scores` filtered to the same labels - so nothing is
+    // recalculated here (see CLAUDE.md invariant 1).
     function overview() {
+      const year = D.bySeason.reduce(
+        (latest, s) => (latest === null || s.year > latest ? s.year : latest),
+        null,
+      );
+      if (year === null)
+        return '<h2>This season</h2><p class="sub">No seasons are loaded.</p>';
+      // A combined view can hold the same year on both platforms, so this keeps
+      // one standings table per platform entry rather than merging them.
+      const current = D.bySeason.filter((s) => s.year === year),
+        labels = current.map((s) => s.season),
+        seasonScores = D.scores.filter((x) => labels.includes(x[2])),
+        best = seasonScores.reduce(
+          (top, x) => (!top || x[0] > top[0] ? x : top),
+          null,
+        ),
+        leaders = current
+          .map((s) => (s.rows[0] ? n(s.rows[0].uid) : null))
+          .filter(Boolean);
+      return (
+        `<h2>${esc(year)} season</h2><p class="sub">Where the league stands right now. Career records and head-to-head live under All time; the latest recap is under Weekly wrapped.</p>` +
+        cards([
+          ["Standings leader", leaders.join(" \u00b7 ") || "\u2014"],
+          [
+            "Regular-season weeks played",
+            D.weeks.filter((w) => labels.includes(w.season) && !w.postseason)
+              .length,
+          ],
+          [
+            "Best week",
+            best ? `${num(best[0])} \u00b7 ${n(best[1])}` : "\u2014",
+          ],
+          [
+            "Platforms",
+            [...new Set(current.map((s) => s.src))].join(" \u00b7 "),
+          ],
+        ]) +
+        current
+          .map(
+            (s) =>
+              `<h3>${esc(s.season)} standings</h3><p class="sub">Click a manager for their profile.</p>` +
+              table(
+                ["Rank", "Manager", "Record", "PF", "PA"],
+                s.rows.map((r, i) => [
+                  i + 1,
+                  manager(r.uid),
+                  rec(r) + (r.uid === s.champ ? " \ud83c\udfc6" : ""),
+                  num(r.pf),
+                  num(r.pa),
+                ]),
+              ),
+          )
+          .join("") +
+        `<h3>${esc(year)} highest weekly scores</h3>` +
+        table(
+          ["Points", "Manager", "Season", "Week"],
+          seasonScores
+            .slice()
+            .sort((a, b) => b[0] - a[0])
+            .slice(0, 10)
+            .map((s) => [num(s[0]), manager(s[1]), s[2], s[3]]),
+        )
+      );
+    }
+    function allTime() {
       return (
         '<h2>All-time standings</h2><p class="sub">Click a manager for their profile. Records and points use platform season totals.</p>' +
         table(
@@ -791,14 +865,239 @@
         startsCoverage(startsManager, startsSeason, startsGames)
       );
     }
+    const TRADE_RANK_METHODOLOGY =
+      "How a manager has actually fared in trades. A trade’s margin is the starter points the incoming package produced minus what the other side’s package produced, over the weeks each team held those players — the same figures the trade analyzer reports. Net starter points sum those margins, so winning six trades by a point each is not mistaken for fleecing one team for two hundred; Rank by switches the ranking between that total, how often a manager came out ahead, and the average trade. Multi-team trades compare a package against the average of the others. A pair of trades that swaps players and hands the identical set back within one scoring week is removed from both managers’ records entirely, because the rosters end where they started and neither leg moved an asset. Draft picks and FAAB carry no point value, and a trade is left uncompared rather than scored as even when its import is incomplete or no completed weeks followed it.";
+    const TRADE_LIST_METHODOLOGY =
+      "Every trade this manager completed, newest first. Received and Sent list the player assets that moved. Received points are the starter points the incoming package produced from the first full week after the trade, while this manager still held those players; opponent points are the same figure for the other side, averaged across the others in a multi-team trade. Margin is the difference, and it is the same per-trade figure the trade ranking sums. Draft picks and FAAB are counted as extras but carry no point value, and a trade the analyzer could not compare keeps an unavailable margin rather than being scored as even.";
+    const assetList = (names) => (names.length ? names.join(", ") : "\u2014");
+    const profileTradeTable = (rows) => {
+      const uncompared = rows.filter((r) => r.margin === null).length;
+      return (
+        table(
+          [
+            "Season",
+            "Week",
+            "Opponent",
+            "Received",
+            "Sent",
+            "Received pts",
+            "Opponent pts",
+            "Margin",
+          ],
+          rows.map((r) => [
+            r.season,
+            intCell(r.week),
+            r.opponents.length
+              ? raw(r.opponents.map((u) => manager(u).html).join(", "))
+              : "\u2014",
+            assetList(r.received) + (r.extras ? ` (+${r.extras} pick/FAAB)` : ""),
+            assetList(r.given),
+            [known(r.receivedPoints), sortable(r.receivedPoints)],
+            [known(r.against), sortable(r.against)],
+            [r.margin === null ? "\u2014" : signed(r.margin), sortable(r.margin)],
+          ]),
+        ) +
+        note([
+          rows.length ? "" : "No completed trades for this manager.",
+          uncompared
+            ? `${plural(uncompared, "trade is", "trades are")} listed without a margin because the analyzer could not compare ${uncompared === 1 ? "it" : "them"}.`
+            : "",
+        ])
+      );
+    };
+    const WAIVER_RANK_METHODOLOGY =
+      "How a manager has fared working the wire, scored the same way as the waiver board: starter points from the week after each pickup until the manager dropped or traded the player away. Total pickup points reward finding a contributor and keeping him, points per start measures the rate instead, and hit rate is the share of counted pickups that ever reached a lineup — Rank by chooses which one orders the ranking. Commissioner moves are excluded, as are trades, which the trade ranking already values. Pickups whose scores never imported are counted as uncounted and are never scored as zero.";
+
+    // Both rankings share a shape: one row per manager, ordered by whichever
+    // measure the reader picked, with managers who have no measurable move left
+    // unranked rather than parked at zero — a zero net would otherwise sit
+    // above everyone who has ever lost a trade. Ties share a rank.
+    const rankBy = (rows, measure, tiebreak) => {
+      const list = rows
+        .map((row) => ({ ...row, measure: measure(row) }))
+        .sort(
+          (a, b) =>
+            (b.measure !== null) - (a.measure !== null) ||
+            (b.measure ?? 0) - (a.measure ?? 0) ||
+            tiebreak(a, b) ||
+            n(a.uid).localeCompare(n(b.uid)),
+        );
+      let rank = 0;
+      list.forEach((row, index) => {
+        if (row.measure === null) {
+          row.rank = null;
+          return;
+        }
+        if (index === 0 || row.measure !== list[index - 1].measure) {
+          rank = index + 1;
+        }
+        row.rank = rank;
+      });
+      return list;
+    };
+    const tradeRankSortOptions = [
+      ["net", "Net starter points"],
+      ["wins", "Trades won"],
+      ["winRate", "Share of trades won"],
+      ["avg", "Average margin"],
+    ];
+    const tradeRankMeasures = {
+      net: (row) => (row.trades ? row.net : null),
+      wins: (row) => (row.trades ? row.wins : null),
+      winRate: (row) => (row.trades ? row.winRate : null),
+      avg: (row) => (row.trades ? row.avg : null),
+    };
+    const waiverRankSortOptions = [
+      ["pts", "Total pickup points"],
+      ["perStart", "Points per start"],
+      ["hitRate", "Hit rate"],
+    ];
+    const waiverRankMeasures = {
+      pts: (row) => row.total,
+      perStart: (row) => row.ptsPerStart,
+      hitRate: (row) => row.hitRate,
+    };
+    const waiverRankBase = (() => {
+      const rows = new Map(
+        ids.map((uid) => [
+          uid,
+          {
+            uid,
+            pickups: 0,
+            counted: 0,
+            uncounted: 0,
+            pts: 0,
+            starts: 0,
+            started: 0,
+          },
+        ]),
+      );
+      for (const p of D.pickups || []) {
+        if (p.type !== "waiver" && p.type !== "free_agent") continue;
+        const row = rows.get(p.uid);
+        if (!row) continue;
+        row.pickups++;
+        if (p.pts === null || p.starts === null) {
+          row.uncounted++;
+          continue;
+        }
+        row.counted++;
+        row.pts += p.pts;
+        row.starts += p.starts;
+        if (p.starts > 0) row.started++;
+      }
+      return [...rows.values()].map((row) => ({
+        ...row,
+        total: row.counted ? row.pts : null,
+        ptsPerStart: row.starts ? row.pts / row.starts : null,
+        hitRate: row.counted ? row.started / row.counted : null,
+      }));
+    })();
+    const tradeRankRows = (order) =>
+      rankBy(
+        tradeRanks,
+        tradeRankMeasures[order] || tradeRankMeasures.net,
+        (a, b) => b.net - a.net || b.wins - a.wins || a.losses - b.losses,
+      );
+    const waiverRankRows = (order) =>
+      rankBy(
+        waiverRankBase,
+        waiverRankMeasures[order] || waiverRankMeasures.pts,
+        (a, b) => sortable(b.total) - sortable(a.total) || b.started - a.started,
+      );
+    const rankLabel = (row, list) =>
+      row && row.rank
+        ? `#${row.rank} / ${list.filter((entry) => entry.rank).length}`
+        : "Unranked";
+    const tradeRecord = (row) =>
+      row && row.trades
+        ? `${row.wins}-${row.losses}${row.even ? "-" + row.even : ""}`
+        : "—";
+    const note = (sentences) => {
+      const text = sentences.filter(Boolean).join(" ");
+      return text ? `<p class="sub">${esc(text)}</p>` : "";
+    };
+    const plural = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+    const tradeRankTable = (rows) =>
+      table(
+        [
+          "Rank",
+          "Manager",
+          "Trades",
+          "Won-lost",
+          "Share won",
+          "Net starter points",
+          "Average margin",
+          "Best trade",
+          "Worst trade",
+          "Uncompared",
+        ],
+        rows.map((r) => [
+          intCell(r.rank),
+          manager(r.uid),
+          intCell(r.trades),
+          [tradeRecord(r), sortable(r.trades ? r.wins : null)],
+          [percentage(r.winRate), sortable(r.winRate)],
+          r.trades ? [signed(r.net), r.net] : numCell(null),
+          r.avg === null ? numCell(null) : [signed(r.avg), r.avg],
+          r.best
+            ? [
+                `${signed(r.best.margin)} · ${r.best.year} W${r.best.week}`,
+                r.best.margin,
+              ]
+            : numCell(null),
+          r.worst
+            ? [
+                `${signed(r.worst.margin)} · ${r.worst.year} W${r.worst.week}`,
+                r.worst.margin,
+              ]
+            : numCell(null),
+          intCell(r.uncomparable),
+        ]),
+      );
+    const waiverRankTable = (rows) =>
+      table(
+        [
+          "Rank",
+          "Manager",
+          "Pickups",
+          "Counted",
+          "Reached a lineup",
+          "Hit rate",
+          "Starts",
+          "Pickup points",
+          "Points per start",
+          "Uncounted",
+        ],
+        rows.map((r) => [
+          intCell(r.rank),
+          manager(r.uid),
+          intCell(r.pickups),
+          intCell(r.counted),
+          intCell(r.started),
+          [percentage(r.hitRate), sortable(r.hitRate)],
+          intCell(r.starts),
+          numCell(r.total),
+          numCell(r.ptsPerStart),
+          intCell(r.uncounted),
+        ]),
+      );
     function profile() {
       if (!selected) return "<p>No managers available.</p>";
       const a = D.all[selected],
+        tradeRanking = tradeRankRows(profileTradeSort),
+        waiverRanking = waiverRankRows(profileWaiverSort),
+        myTrades = tradeRanking.find((r) => r.uid === selected),
+        myWaivers = waiverRanking.find((r) => r.uid === selected),
         profilePickups = pickupRows({
           managerId: selected,
           minStarts: profilePickupMinStarts,
           order: profilePickupSort,
         }),
+        profileTrades = root.TradeAnalysis.managerTrades(
+          tradeData.trades,
+          selected,
+        ),
         scores = D.scores.filter((s) => s[1] === selected),
         wins = D.games
           .filter((g) => g.winner === selected)
@@ -875,24 +1174,107 @@
           ["Opponent", "Wins", "Losses", "Ties"],
           opponents.slice(0, 5).map(([u, r]) => [manager(u), ...r]),
         ) +
-        "<h3>Best waiver pickups</h3>" +
-        `<p class="sub">${PICKUP_METHODOLOGY}</p>` +
+        "<h3>Trade rankings</h3>" +
+        `<p class="sub">${TRADE_RANK_METHODOLOGY}</p>` +
+        cards([
+          ["Trade rank", rankLabel(myTrades, tradeRanking)],
+          ["Trades compared", myTrades ? myTrades.trades : 0],
+          ["Won-lost", tradeRecord(myTrades)],
+          [
+            "Net starter points",
+            myTrades && myTrades.trades ? signed(myTrades.net) : "—",
+          ],
+          [
+            "Average margin",
+            myTrades && myTrades.trades ? signed(myTrades.avg) : "—",
+          ],
+          [
+            "Best trade",
+            myTrades && myTrades.best ? signed(myTrades.best.margin) : "—",
+          ],
+        ]) +
+        note([
+          !myTrades || !myTrades.trades
+            ? "No comparable trades, so this manager is unranked."
+            : "",
+          myTrades && myTrades.uncomparable
+            ? `${plural(myTrades.uncomparable, "trade is", "trades are")} excluded because the analyzer could not compare ${myTrades.uncomparable === 1 ? "it" : "them"}.`
+            : "",
+        ]) +
         '<div class="filters">' +
         select(
-          "profile-pickup-sort",
+          "profile-trade-sort",
           "Rank by",
-          pickupSortOptions,
-          profilePickupSort,
-        ) +
-        sliderBox(
-          "profile-pickup-min-starts",
-          "Minimum starts",
-          pickupMaxStarts,
-          profilePickupMinStarts,
+          tradeRankSortOptions,
+          profileTradeSort,
         ) +
         "</div>" +
-        pickupPerStartNote(profilePickupSort, profilePickupMinStarts) +
-        pickupTable(profilePickups, false)
+        tradeRankTable(tradeRanking) +
+        "<h3>Waiver rankings</h3>" +
+        `<p class="sub">${WAIVER_RANK_METHODOLOGY}</p>` +
+        cards([
+          ["Waiver rank", rankLabel(myWaivers, waiverRanking)],
+          ["Pickups", myWaivers ? myWaivers.pickups : 0],
+          ["Pickup points", known(myWaivers ? myWaivers.total : null)],
+          ["Points per start", known(myWaivers ? myWaivers.ptsPerStart : null)],
+          [
+            "Reached a lineup",
+            percentage(myWaivers ? myWaivers.hitRate : null),
+          ],
+        ]) +
+        note([
+          !myWaivers || !myWaivers.counted
+            ? "No counted waiver or free-agent pickups, so this manager is unranked."
+            : "",
+          myWaivers && myWaivers.uncounted
+            ? `${plural(myWaivers.uncounted, "pickup is", "pickups are")} uncounted because its scores are unavailable.`
+            : "",
+        ]) +
+        '<div class="filters">' +
+        select(
+          "profile-waiver-sort",
+          "Rank by",
+          waiverRankSortOptions,
+          profileWaiverSort,
+        ) +
+        "</div>" +
+        waiverRankTable(waiverRanking) +
+        // Both ways this manager acquired players, in one switchable panel: the
+        // rankings above say how well they did it, this says what they did. The
+        // sort and minimum-starts filters belong to the pickup table, so they
+        // only appear with it.
+        "<h3>Every move for this manager</h3>" +
+        '<div class="filters">' +
+        `<div class="switch" role="group" aria-label="Which moves to show">${[
+          ["trades", `Trades (${profileTrades.length})`],
+          ["pickups", `Waiver pickups (${profilePickups.length})`],
+        ]
+          .map(
+            ([key, label]) =>
+              `<button data-profile-view="${key}"${profileMoveView === key ? ' class="on"' : ""} aria-pressed="${profileMoveView === key}">${esc(label)}</button>`,
+          )
+          .join("")}</div>` +
+        (profileMoveView === "pickups"
+          ? select(
+              "profile-pickup-sort",
+              "Rank by",
+              pickupSortOptions,
+              profilePickupSort,
+            ) +
+            sliderBox(
+              "profile-pickup-min-starts",
+              "Minimum starts",
+              pickupMaxStarts,
+              profilePickupMinStarts,
+            )
+          : "") +
+        "</div>" +
+        (profileMoveView === "pickups"
+          ? `<p class="sub">${PICKUP_METHODOLOGY}</p>` +
+            pickupPerStartNote(profilePickupSort, profilePickupMinStarts) +
+            pickupTable(profilePickups, false)
+          : `<p class="sub">${TRADE_LIST_METHODOLOGY}</p>` +
+            profileTradeTable(profileTrades))
       );
     }
     function weekly() {
@@ -1027,7 +1409,7 @@
       );
     }
     const DRAFT_METHODOLOGY =
-      "Starter points are scored for the drafting manager only, through completed weeks and including playoffs. One table carries both measures; the Rank by filter chooses which one orders it, and any column heading can still be clicked to sort. <strong>Points/start</strong> is starter points ÷ starts against the start-weighted points per start for the same round and season — a rate, so a pick that played four good weeks is neither flattered nor penalized against one that played sixteen. <strong>Total starter points</strong> is measured against that round’s mean pick, which rewards availability. The minimum-starts filter applies to both rankings but never moves either baseline. Picks the drafting manager never started are listed separately: a player drafted and then traded or dropped before week 1 produced zero points for a reason that is not a draft mistake. Late rounds are 8+, early rounds 1–3. This measures realized roster contribution, not talent or predictive value. Active seasons are to date. Starter points and points/start are unavailable if any counted start lacks a player score, and a pick is left out of whichever ranking it has no measure for.";
+      "Starter points are scored for the drafting manager only, through completed weeks and including playoffs. One table carries both measures; the Rank by filter chooses which one orders it, and any column heading can still be clicked to sort. <strong>Points/start</strong> is starter points ÷ starts against the start-weighted points per start for the same round and season — a rate, so a pick that played four good weeks is neither flattered nor penalized against one that played sixteen. <strong>Total starter points</strong> is measured against that round’s mean pick, which rewards availability. <strong>Points/week</strong> divides the same starter points by weeks rostered — the completed weeks the drafting manager actually carried the player — so a pick that was benched or dropped is charged for the weeks it occupied a roster spot without being charged for the weeks after it left. The three <strong>position peers</strong> measures swap the round baseline for the four picks taken nearest to this one at the same position and season, so a third-round running back is judged against the running backs who went around him rather than against the quarterbacks and kickers who shared his round; a pick is never its own peer, and a position too thin to supply two usable peers leaves the comparison unavailable rather than scoring itself as average. The per-week baseline is weighted by weeks held as the per-start one is weighted by starts, and it is the measure available for the most picks: a pick that never started still has a points-per-week figure, while points per start does not exist for it at all. Because a position’s first and last picks can only have peers on one side, their peer baselines lean on better- or worse-drafted company. The minimum-starts filter applies to every ranking but never moves any baseline. Picks the drafting manager never started are listed separately: a player drafted and then traded or dropped before week 1 produced zero points for a reason that is not a draft mistake. Late rounds are 8+, early rounds 1–3. This measures realized roster contribution, not talent or predictive value. Active seasons are to date. Starter points and points/start are unavailable if any counted start lacks a player score, and a pick is left out of whichever ranking it has no measure for.";
     const DRAFT_NEVER_STARTED_NOTE =
       "Drafted picks with zero starts for the drafting manager, earliest round first. Weeks rostered counts the completed weeks the player was on that manager’s roster. Zero weeks rostered means the pick never reached the drafting manager’s roster in a counted week — an immediate trade or drop, or a gap in the imported transaction history — so it is not ranked at all; a pick that was rostered and never started still ranks by total starter points.";
     const DRAFT_MAX_STARTS = 17;
@@ -1039,10 +1421,15 @@
       "Pos",
       "Manager",
       "Starts",
+      "Weeks",
       "Starter points",
       "Points/start",
+      "Points/week",
       "Vs round average",
       "Vs round average per start",
+      "Vs position peers",
+      "Vs position peers per start",
+      "Vs position peers per week",
     ];
     const draftCells = (p) => [
       p.season,
@@ -1052,10 +1439,15 @@
       p.pos || "—",
       manager(p.uid),
       intCell(p.starts),
+      intCell(p.rostered),
       numCell(p.pts),
       numCell(p.ptsPerStart),
+      numCell(p.ptsPerWeek),
       [signed(p.value), sortable(p.value)],
       [signed(p.valuePerStart), sortable(p.valuePerStart)],
+      [signed(p.peerValue), sortable(p.peerValue)],
+      [signed(p.peerValuePerStart), sortable(p.peerValuePerStart)],
+      [signed(p.peerValuePerWeek), sortable(p.peerValuePerWeek)],
     ];
     const draftNeverColumns = [
       "Season",
@@ -1080,10 +1472,20 @@
     const draftSortOptions = [
       ["perStart", "Points per start"],
       ["value", "Total starter points"],
+      ["posPerStart", "Points per start vs position peers"],
+      ["posPerWeek", "Points per week vs position peers"],
+      ["posValue", "Total starter points vs position peers"],
     ];
     // Each ranking needs its own measure, so a pick only appears when the
     // chosen one is available for it.
-    const draftMetric = { perStart: "valuePerStart", value: "value" };
+    const draftMetric = {
+      perStart: "valuePerStart",
+      value: "value",
+      posPerStart: "peerValuePerStart",
+      posPerWeek: "peerValuePerWeek",
+      posValue: "peerValue",
+    };
+    const draftRateSorts = new Set(["perStart", "posPerStart"]);
     function drafts() {
       const key = draftMetric[draftSort] || draftMetric.value;
       const min = Number(draftMinStarts) || 0;
@@ -1125,7 +1527,7 @@
       // Points per start over one or two starts is a single good week, not a
       // trend; warn as the waiver-pickup ranking does.
       const rateNote =
-        draftSort === "perStart" && min < 3
+        draftRateSorts.has(draftSort) && min < 3
           ? '<p class="sub">Points per start rewards a single good week, so with a low minimum either end of this ranking can be a one-start pick. Raise the minimum starts to compare picks that actually held a lineup spot.</p>'
           : "";
       return (
@@ -1571,7 +1973,11 @@
       const t = trades.find((t) => tradeKey(t) === selectedTrade) || trades[0];
       selectedTrade = t ? tradeKey(t) : "";
       const intro =
-        '<h2>Trade analyzer</h2><p class="sub">See what each team received, how its season changed, and how much the acquired players actually contributed.</p><div class="filters">' +
+        '<h2>Trade analyzer</h2><p class="sub">See what each team received, how its season changed, and how much the acquired players actually contributed.</p>' +
+        (tradeData.coverage.excludedReversals
+          ? `<p class="sub">${esc(tradeData.coverage.excludedReversals)} trade(s) were swapped back within one scoring week and are excluded; the rosters ended where they started.</p>`
+          : "") +
+        '<div class="filters">' +
         select("trade-season", "Season", seasonOptions, tradeSeason) +
         select("trade-manager", "Manager", managerOptions, tradeManager) +
         "</div>";
@@ -1621,7 +2027,7 @@
         choice +
         `<p class="sub">Completion week: ${esc(t.week)}${t.reportedWeek !== t.week ? ` (API originally reported week ${esc(t.reportedWeek ?? "unknown")})` : ""}. The completion week is excluded from both before and after comparisons.</p>` +
         `<div class="cards"><div class="card"><span>Starter-point balance</span><strong>${balance.comparable ? `${known(balance.score)} / 100` : "Unavailable"}</strong></div><div class="card"><span>Package contribution gap</span><strong>${known(balance.gap)}${balance.gap !== null ? " pts" : ""}</strong></div><div class="card"><span>Higher received contribution</span><strong>${balance.comparable && balance.leaderUid ? esc(n(balance.leaderUid)) : balance.comparable ? "Equal" : "—"}</strong></div></div>` +
-        '<p class="sub">100 means equal received starter points; lower values mean a larger gap. This is realized contribution while each recipient held the players. Picks, FAAB, bench value, positional scarcity and replacement players are not valued. A better record after a trade does not establish that the trade caused it.</p>' +
+        '<p class="sub">100 means equal received starter points; lower values mean a larger gap. This is realized contribution while each recipient held the players, including a playoff bye week, which scores a lineup without producing a win or a loss. Trades reversed within one scoring week are excluded from the analyzer and from the rankings. Picks, FAAB, bench value, positional scarcity and replacement players are not valued. A better record after a trade does not establish that the trade caused it.</p>' +
         (balance.reason ? `<p>${esc(balance.reason)}</p>` : "") +
         t.warnings.map((w) => `<p class="sub">${esc(w)}</p>`).join("") +
         (t.rosterCuts?.length
@@ -1989,23 +2395,126 @@
       link.remove();
     }
 
+    // The landing view. Opening on a menu rather than one season's table is
+    // what lets the league loader live in one place: index.html shows its
+    // league box only while this section is active, keyed off
+    // data-active-section. "home" is deliberately NOT a chat section - it has
+    // no statistics of its own, and chat-widget.js already falls back to
+    // overview for an id it does not know, which keeps MAX_FACTS untouched.
+    function mainMenu() {
+      const platforms = [...new Set(D.sources.map((s) => s.src))].join(" + ");
+      return (
+        `<h2>Main menu</h2><p class="sub">${esc(String(D.sources.length))} season${D.sources.length === 1 ? "" : "s"} loaded${platforms ? ` \u00b7 ${esc(platforms)}` : ""}. Pick a feature.</p>` +
+        '<div class="menu-grid">' +
+        groups
+          .filter(([, members]) => !members.includes("home"))
+          .map(
+            ([label, members]) =>
+              `<div class="menu-card"><h3>${esc(label)}</h3>` +
+              members
+                .map(
+                  (k) =>
+                    `<button class="menu-link" data-section="${k}">${esc(sections[k][0])}</button>`,
+                )
+                .join("") +
+              "</div>",
+          )
+          .join("") +
+        "</div>"
+      );
+    }
+    // Section ids are the chat contract, so they stay in step with SECTIONS in
+    // server.mjs and SECTION_LABELS in chat-context.cjs (invariant 8). The
+    // labels here are only what a sub-tab reads.
     const sections = {
-      overview: ["Overview", overview],
+      home: ["Main menu", mainMenu],
+      overview: ["This season", overview],
+      weekly: ["Weekly wrapped", weekly],
       profile: ["Manager profiles", profile],
       starts: ["Most started players", mostStarted],
-      saber: ["Stat Lab", sabermetrics],
-      opportunity: ["xFP & opportunity", opportunity],
-      luck: ["Luck rankings", luck],
-      weekly: ["Weekly wrapped", weekly],
-      records: ["Records & rivalries", records],
-      comebacks: ["Largest comebacks", comebacks],
+      sharing: ["Recap cards", sharing],
       drafts: ["Draft analysis", drafts],
       pickups: ["Waiver wire", waiverBoard],
-      moves: ["Trades & waivers", moves],
       trades: ["Trade analyzer", tradeAnalyzer],
-      charts: ["Season charts", charts],
-      sharing: ["Recap cards", sharing],
+      moves: ["Transaction log", moves],
+      alltime: ["All-time standings", allTime],
+      charts: ["Season comparisons", charts],
+      records: ["Records & rivalries", records],
+      comebacks: ["Largest comebacks", comebacks],
+      saber: ["Sabermetrics", sabermetrics],
+      opportunity: ["xFP & opportunity", opportunity],
+      luck: ["Luck rankings", luck],
     };
+    // Grouping is presentation only: sixteen flat tabs do not fit on one row.
+    // The active group is derived from the active section, so navigation keeps
+    // one piece of state and a group needs no id of its own.
+    const groups = [
+      ["Main menu", ["home"]],
+      ["Current season", ["overview", "weekly"]],
+      ["Managers", ["profile", "starts", "sharing"]],
+      ["Roster building", ["drafts", "pickups", "trades", "moves"]],
+      ["League history", ["alltime", "charts", "records", "comebacks"]],
+      ["Stat Lab", ["saber", "opportunity", "luck"]],
+    ];
+    const groupOf = (id) =>
+      Math.max(
+        groups.findIndex(([, members]) => members.includes(id)),
+        0,
+      );
+    // An explicit #hash wins, then the section a previous mount was showing
+    // (index.html re-mounts this element over the live refresh), then Overview.
+    const hashSection = String(root.location?.hash || "").slice(1);
+    if (Object.hasOwn(sections, hashSection)) section = hashSection;
+    else if (!Object.hasOwn(sections, section)) section = "home";
+    // Every section button stays in the DOM even when its group is hidden,
+    // because chat-widget.js finds and clicks them by `data-section` to follow
+    // an answer's related-section links.
+    // index.html and the saved reports each offer a header slot so the tabs sit
+    // beside the title; without one the nav stays at the top of the mount, so an
+    // embedded dashboard still gets its navigation.
+    const navHost = () =>
+      root.document ? root.document.querySelector("[data-feature-nav]") : null;
+    function navHtml() {
+      const active = groupOf(section);
+      return (
+        '<nav class="feature-nav" aria-label="League features"><div class="feature-groups">' +
+        groups
+          .map(
+            ([label], i) =>
+              `<button data-group="${i}"${i === active ? ' class="on"' : ""} aria-expanded="${i === active}">${esc(label)}</button>`,
+          )
+          .join("") +
+        "</div>" +
+        groups
+          .map(([label, members], i) =>
+            // A group that is one section of the same name (Main menu) would
+            // otherwise repeat itself on the second row.
+            members.length === 1 && sections[members[0]][0] === label
+              ? ""
+              : `<div class="feature-tabs" role="group" aria-label="${esc(label)}"${i === active ? "" : " hidden"}>` +
+                members
+                  .map(
+                    (k) =>
+                      `<button data-section="${k}"${section === k ? ' class="on" aria-current="page"' : ""}>${esc(sections[k][0])}</button>`,
+                  )
+                  .join("") +
+                "</div>",
+          )
+          .join("") +
+        "</nav>"
+      );
+    }
+    // Keeps the URL shareable without making the back button undo a tab.
+    // replaceState can throw on a file:// report, where a link is meaningless
+    // anyway, so a failure is ignored.
+    function syncHash() {
+      try {
+        if (root.location && root.location.hash !== `#${section}`)
+          root.history.replaceState(null, "", `#${section}`);
+      } catch {
+        /* not linkable here; the dashboard still works */
+      }
+    }
     function draw() {
       el.dataset.activeSection = section;
       el.dataset.selectedManager = selected || "";
@@ -2067,14 +2576,13 @@
         D.sources.some((s) => !savedIds.includes(String(s.league.league_id)))
           ? "external"
           : "saved";
-      el.innerHTML = `<nav class="feature-tabs" aria-label="League features">${Object.entries(
-        sections,
-      )
-        .map(
-          ([k, [label]]) =>
-            `<button data-section="${k}"${section === k ? ' class="on" aria-current="page"' : ""}>${esc(label)}</button>`,
-        )
-        .join("")}</nav><section aria-live="polite">${D.sources
+      const host = navHost();
+      const nav = navHtml();
+      if (host) {
+        host.innerHTML = nav;
+        host.onclick = onNavClick;
+      }
+      el.innerHTML = `${host ? "" : nav}<section aria-live="polite">${D.sources
         .filter((s) => s.missing?.length)
         .map(
           (s) =>
@@ -2096,15 +2604,26 @@
           : "";
       el.dataset.chatMatchup = section === "comebacks" ? selectedComeback : "";
       el.dataset.chatPosition = section === "starts" ? startsPosition : "all";
+      syncHash();
     }
-    el.onclick = (e) => {
+    el.onclick = onNavClick;
+    function onNavClick(e) {
       const b = e.target.closest("button");
-      if (b?.dataset.section) {
+      if (b?.dataset.group) {
+        // Opening a group lands on its first section unless the current one
+        // already belongs to it, so reopening a group does not lose your place.
+        const members = groups[Number(b.dataset.group)]?.[1] || [];
+        if (members.length && !members.includes(section)) section = members[0];
+        draw();
+      } else if (b?.dataset.section) {
         section = b.dataset.section;
         draw();
       } else if (b?.dataset.manager) {
         selected = b.dataset.manager;
         section = "profile";
+        draw();
+      } else if (b?.dataset.profileView) {
+        profileMoveView = b.dataset.profileView;
         draw();
       } else if (b?.dataset.playerStarts) {
         startsManager = b.dataset.playerStarts;
@@ -2252,6 +2771,12 @@
         case "pickup-sort":
           pickupSort = e.target.value;
           break;
+        case "profile-trade-sort":
+          profileTradeSort = e.target.value;
+          break;
+        case "profile-waiver-sort":
+          profileWaiverSort = e.target.value;
+          break;
         case "drops-season":
           dropsSeason = e.target.value;
           break;
@@ -2300,6 +2825,19 @@
       }
       draw();
     };
+    // Editing the hash navigates. The handler is kept on the element so a
+    // re-mount replaces it, rather than leaving an older closure redrawing
+    // stale data into the same node.
+    if (el.leagueHashHandler)
+      root.removeEventListener("hashchange", el.leagueHashHandler);
+    el.leagueHashHandler = () => {
+      const id = String(root.location?.hash || "").slice(1);
+      if (Object.hasOwn(sections, id) && id !== section) {
+        section = id;
+        draw();
+      }
+    };
+    root.addEventListener("hashchange", el.leagueHashHandler);
     draw();
     return D;
   }

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { analyze } = require("../trade-analysis.js");
+const { analyze, rankManagers } = require("../trade-analysis.js");
 
 function fixture() {
   const weeks = Array.from({ length: 6 }, (_, i) => [1, 2, 3, 4].map((rid) => ({
@@ -244,4 +244,180 @@ test("confirmed ESPN roster cuts are displayed separately from traded packages",
   season.src = "ESPN";
   season.transactions[0].roster_cuts = {};
   assert.equal(trade(season).detailsIncomplete, true, "new ESPN metadata must explicitly identify cuts");
+});
+
+const ranks = (season) => {
+  const rows = rankManagers(analyze([season]).trades);
+  return Object.fromEntries(rows.map((row) => [row.uid, row]));
+};
+
+// A second trade, in which roster 1 lands Delta (the fixture's top scorer) from
+// roster 4 for benched Echo. Every roster starts the whole bench here so an
+// acquired player actually scores for whoever received him.
+function twoTrades() {
+  const season = fixture();
+  for (const week of season.weeks) {
+    for (const matchup of week) matchup.starters = ["a", "b", "c", "d", "e"];
+  }
+  season.transactions.push({
+    transaction_id: "trade2", status: "complete", type: "trade", leg: 3, status_updated: 200,
+    adds: { d: 1, e: 4 }, drops: { d: 4, e: 1 }, draft_picks: [], waiver_budget: [],
+  });
+  return season;
+}
+
+test("margin, not win count, decides the trade ranking", () => {
+  const rows = ranks(twoTrades());
+  // Delta scored 43+44+45 for roster 1 against Echo's 8+9+10 for roster 4: a
+  // +105 win that outweighs the -40 loss of the first trade, so a 1-1 record
+  // outranks the 1-0 record of the manager who won that first trade by 40.
+  assert.equal(rows.u1.trades, 2);
+  assert.equal(rows.u1.wins, 1);
+  assert.equal(rows.u1.losses, 1);
+  assert.equal(rows.u1.net, 65);
+  assert.equal(rows.u1.avg, 32.5);
+  assert.equal(rows.u1.winRate, 0.5);
+  assert.equal(rows.u1.best.margin, 105);
+  assert.equal(rows.u1.best.week, 3);
+  assert.deepEqual(rows.u1.best.opponents, ["u4"]);
+  assert.equal(rows.u1.worst.margin, -40);
+  assert.equal(rows.u1.rank, 1);
+  assert.equal(rows.u2.wins, 1);
+  assert.equal(rows.u2.losses, 0);
+  assert.equal(rows.u2.net, 40);
+  assert.equal(rows.u2.rank, 2);
+  assert.equal(rows.u4.net, -105);
+  assert.equal(rows.u4.rank, 3);
+});
+
+test("uncompared trades are counted but never scored, and leave a manager unranked", () => {
+  const season = fixture();
+  season.transactions[0].details_incomplete = true;
+  const rows = ranks(season);
+  assert.equal(rows.u1.uncomparable, 1);
+  assert.equal(rows.u1.trades, 0);
+  assert.equal(rows.u1.net, 0);
+  assert.equal(rows.u1.avg, null);
+  assert.equal(rows.u1.winRate, null);
+  assert.equal(rows.u1.best, null);
+  assert.equal(
+    rows.u1.rank,
+    null,
+    "an incomplete import must not read as an even swap ranked above a real loss",
+  );
+});
+
+test("a manager who never traded is absent from the trade ranking", () => {
+  const rows = ranks(fixture());
+  assert.deepEqual(Object.keys(rows).sort(), ["u1", "u2"]);
+});
+
+// ESPN writes a first-round playoff bye as a single scored row carrying its
+// own matchup_id rather than a null one, which is how a complete week used to
+// be mistaken for missing data. Both traded packages get a bye here so each
+// side stays measurable.
+function playoffBye() {
+  const season = fixture();
+  season.weeks[4].find((m) => m.roster_id === 1).matchup_id = 10;
+  season.weeks[4].find((m) => m.roster_id === 2).matchup_id = 11;
+  return season;
+}
+
+test("a scored playoff bye counts the starter points it produced", () => {
+  const result = trade(playoffBye());
+  const a = participant(result, "u1"), b = participant(result, "u2");
+  assert.equal(a.received[0].missingWeeks, 0, "a bye week is not missing data");
+  assert.equal(a.received[0].byeWeeks, 0, "a scored bye is counted, not skipped");
+  assert.equal(a.received[0].starts, 4);
+  assert.equal(a.receivedPoints, 12 + 13 + 14 + 15);
+  assert.equal(a.receivedRegularPoints, 25);
+  assert.equal(a.receivedPostseasonPoints, 29, "week 5 is the bye and still scores");
+  assert.equal(b.receivedPoints, 22 + 23 + 24 + 25);
+  assert.equal(result.balance.comparable, true);
+  assert.equal(result.balance.gap, 40);
+  assert.equal(result.coverage.missingStarterWeeks, 0);
+});
+
+test("an unpaired week is still missing when its lineup or score is not recorded", () => {
+  let season = playoffBye();
+  delete season.weeks[4].find((m) => m.roster_id === 1).starters;
+  assert.equal(participant(trade(season), "u1").receivedPoints, null, "no lineup, no starter points");
+  season = playoffBye();
+  season.weeks[4].find((m) => m.roster_id === 1).points = null;
+  assert.equal(participant(trade(season), "u1").receivedPoints, null, "no score, no starter points");
+  // Three rows sharing a matchup are neither a bye nor a matchup.
+  season = playoffBye();
+  for (const rid of [2, 3]) season.weeks[4].find((m) => m.roster_id === rid).matchup_id = 10;
+  assert.equal(participant(trade(season), "u1").receivedPoints, null);
+  // A row paired only with itself stays unusable.
+  season = playoffBye();
+  season.weeks[4].find((m) => m.roster_id === 2).matchup_id = 10;
+  season.weeks[4].find((m) => m.roster_id === 2).roster_id = 1;
+  assert.equal(participant(trade(season), "u1").receivedPoints, null);
+});
+
+// A reversal leaves both rosters where they started. Scoring it is actively
+// wrong: the second leg has no later transfer to close it, so it credits a
+// full rest-of-season package to whoever was handed back what they owned.
+function reversed(secondLeg = {}) {
+  const season = fixture();
+  season.transactions.push({
+    transaction_id: "trade-back", status: "complete", type: "trade", leg: 2,
+    status_updated: 200, adds: { a: 2, b: 1 }, drops: { a: 1, b: 2 },
+    draft_picks: [], waiver_budget: [], ...secondLeg,
+  });
+  return season;
+}
+
+test("a trade swapped back within one scoring week removes both legs", () => {
+  const result = analyze([reversed()]);
+  assert.deepEqual(result.trades, []);
+  assert.equal(result.coverage.excludedReversals, 2);
+  assert.equal(result.coverage.trades, 0);
+  assert.deepEqual(rankManagers(result.trades), [], "a scrubbed pair leaves no trade record");
+});
+
+test("the reversal window is one scoring week, and the players must match", () => {
+  // Same week: still a reversal.
+  assert.equal(analyze([reversed({ leg: 2 })]).coverage.excludedReversals, 2);
+  // Next week: still a reversal.
+  assert.equal(analyze([reversed({ leg: 3, status_updated: 300 })]).coverage.excludedReversals, 2);
+  // Two weeks later: real trades with a scoring week in between.
+  let late = analyze([reversed({ leg: 4, status_updated: 400 })]);
+  assert.equal(late.coverage.excludedReversals, 0);
+  assert.equal(late.trades.length, 2);
+  // A different player coming back is not a reversal.
+  const partial = analyze([
+    reversed({ leg: 3, status_updated: 300, adds: { c: 2, b: 1 }, drops: { c: 3, b: 2 } }),
+  ]);
+  assert.equal(partial.coverage.excludedReversals, 0);
+  assert.equal(partial.trades.length, 2);
+});
+
+test("a reversal is scrubbed even though its second leg would score a full season", () => {
+  // Both legs in week 0, so nothing closes the second leg: exactly the shape
+  // that credited a whole rest-of-season package to the manager handed back
+  // what they already owned.
+  const season = fixture();
+  season.transactions[0].leg = 0;
+  season.transactions[0].status_updated = 100;
+  season.transactions.push({
+    transaction_id: "trade-back", status: "complete", type: "trade", leg: 0,
+    status_updated: 150, adds: { a: 2, b: 1 }, drops: { a: 1, b: 2 },
+    draft_picks: [], waiver_budget: [],
+  });
+  const unfiltered = analyze([season]);
+  assert.equal(unfiltered.coverage.excludedReversals, 2);
+  assert.deepEqual(unfiltered.trades, []);
+});
+
+test("pick-only trades between the same managers are never read as a reversal", () => {
+  const season = fixture();
+  const picks = (id, leg) => ({ transaction_id: id, status: "complete", type: "trade", leg,
+    status_updated: 100 + leg, adds: {}, drops: {}, roster_ids: [1, 2],
+    draft_picks: [{ season: "2026", round: 1, owner_id: 1, previous_owner_id: 2 }], waiver_budget: [] });
+  season.transactions = [picks("p1", 2), picks("p2", 3)];
+  const result = analyze([season]);
+  assert.equal(result.coverage.excludedReversals, 0);
+  assert.equal(result.trades.length, 2);
 });

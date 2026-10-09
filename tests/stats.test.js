@@ -125,6 +125,16 @@ test("picks never started are separated from picks never rostered", () => {
   // The total baseline still exists, so value stays available.
   assert.equal(bench.roundMean, 0);
   assert.equal(bench.value, 0);
+  // Points per week is the measure that survives a pick never starting: two
+  // weeks on the roster for nothing is zero per week, which is a fact, while
+  // points per start has no denominator at all.
+  assert.equal(bench.ptsPerWeek, 0);
+  assert.equal(bench.ptsPerStart, null);
+  // Never on the roster, so even the per-week denominator is missing.
+  assert.equal(ghost.ptsPerWeek, null);
+  // Of bench's two peers only one was ever rostered, so there is no per-week
+  // baseline to compare against.
+  assert.equal(bench.peerValuePerWeek, null);
 });
 test("an unscored start stays countable while starter points become unavailable", () => {
   const row = (roster_id, points, players_points) => ({
@@ -418,4 +428,149 @@ test("production after the dropper wins the player back is not held against the 
   const star = analyze([s]).drops.find((x) => x.player === "Star");
   assert.equal(star.reclaimedWeek, 2);
   assert.deepEqual([star.starts, star.pts, star.ptsPerStart], [1, 30, 30]);
+});
+
+function peerSeason() {
+  // Two identical counted weeks, so every pick's points are twice its weekly
+  // score and every start count is exactly 2.
+  const perWeek = {
+    p1: 10,
+    p2: 20,
+    p3: 30,
+    p4: 40,
+    p5: 50,
+    p6: 60,
+    r7: 100,
+    r8: 10,
+    r9: 30,
+    k10: 5,
+  };
+  const lineups = {
+    1: ["p1", "p5", "r9"],
+    2: ["p2", "p6", "k10"],
+    3: ["p3", "r7"],
+    4: ["p4", "r8"],
+  };
+  const week = () =>
+    [1, 2, 3, 4].map((roster_id) => {
+      const ids = lineups[roster_id];
+      return {
+        roster_id,
+        matchup_id: roster_id <= 2 ? 1 : 2,
+        points: ids.reduce((n, id) => n + perWeek[id], 0),
+        players: ids,
+        starters: ids,
+        players_points: Object.fromEntries(ids.map((id) => [id, perWeek[id]])),
+      };
+    });
+  // Six quarterbacks, three running backs, one kicker, drafted in that order.
+  const picks = [
+    ["p1", "QB", 1],
+    ["p2", "QB", 2],
+    ["p3", "QB", 3],
+    ["p4", "QB", 4],
+    ["p5", "QB", 1],
+    ["p6", "QB", 2],
+    ["r7", "RB", 3],
+    ["r8", "RB", 4],
+    ["r9", "RB", 1],
+    ["k10", "K", 2],
+  ].map(([player_id, position, roster_id], i) => ({
+    player_id,
+    roster_id,
+    pick_no: i + 1,
+    round: Math.floor(i / 5) + 1,
+    metadata: { position },
+  }));
+  return {
+    src: "Sleeper",
+    league: {
+      season: "2032",
+      status: "complete",
+      settings: { playoff_week_start: 3, last_scored_leg: 2 },
+    },
+    users: ["a", "b", "c", "d"].map((user_id) => ({
+      user_id,
+      display_name: user_id,
+    })),
+    rosters: ["a", "b", "c", "d"].map((owner_id, i) => ({
+      roster_id: i + 1,
+      owner_id,
+      settings: {},
+    })),
+    bracket: [],
+    players: Object.fromEntries(
+      picks.map((k) => [
+        k.player_id,
+        { name: k.player_id, position: k.metadata.position },
+      ]),
+    ),
+    weeks: [week(), week()],
+    picks,
+    transactions: [],
+  };
+}
+test("a pick's peers are the nearest picks at its own position, never itself", () => {
+  const d = analyze([peerSeason()]);
+  const pick = (player) => d.drafts.find((p) => p.player === player);
+  // Draft order within the position, not the overall slot.
+  assert.deepEqual(
+    ["p1", "p6", "r7", "r9", "k10"].map((n) => pick(n).posRank),
+    [1, 6, 1, 3, 1],
+  );
+  // The first quarterback's four nearest peers are QB2-QB5; QB6 is too far to
+  // enter the baseline, which is what keeps this from being a whole-position
+  // average.
+  const p1 = pick("p1");
+  assert.equal(p1.peers, 4);
+  assert.equal(p1.peerMean, (40 + 60 + 80 + 100) / 4);
+  assert.equal(p1.peerPerStart, (40 + 60 + 80 + 100) / 8);
+  assert.equal(p1.peerValue, 20 - 70);
+  assert.equal(p1.peerValuePerStart, 10 - 35);
+  // Every pick here was rostered both counted weeks, so the per-week baseline
+  // matches the per-start one and the two measures agree.
+  assert.equal(p1.ptsPerWeek, 10);
+  assert.equal(p1.peerPerWeek, (40 + 60 + 80 + 100) / 8);
+  assert.equal(p1.peerValuePerWeek, 10 - 35);
+  // The last quarterback's peers run the other way, QB2-QB5 again.
+  assert.equal(pick("p6").peerMean, (40 + 60 + 80 + 100) / 4);
+  assert.equal(pick("p6").peerValue, 120 - 70);
+  // A running back is measured against running backs, so the pick that shares
+  // its round with quarterbacks is not judged by them.
+  const r7 = pick("r7");
+  assert.equal(r7.peers, 2);
+  assert.equal(r7.peerMean, (20 + 60) / 2);
+  assert.equal(r7.peerValue, 200 - 40);
+  assert.ok(
+    r7.peerValue !== r7.value,
+    "the round baseline and the position baseline disagree",
+  );
+});
+test("a position too thin for peers reports no comparison instead of average", () => {
+  const d = analyze([peerSeason()]);
+  const k = d.drafts.find((p) => p.player === "k10");
+  assert.equal(k.peers, 0);
+  // The only kicker drafted: scoring him against himself would read as exactly
+  // average, which is an invented fact, so both measures stay unavailable.
+  assert.deepEqual(
+    [k.peerMean, k.peerPerStart, k.peerValue, k.peerValuePerStart],
+    [null, null, null, null],
+  );
+  // The round baseline still exists for him, so nothing else is lost.
+  assert.ok(k.value !== null);
+});
+test("peers never cross a season or a platform", () => {
+  const a = peerSeason(),
+    b = peerSeason();
+  b.src = "ESPN";
+  const d = analyze([a, b]);
+  const solo = analyze([a]);
+  const byLabel = (label, player) =>
+    d.drafts.find((p) => p.season === label && p.player === player);
+  assert.equal(
+    byLabel("2032 (Sleeper)", "p1").peerMean,
+    solo.drafts.find((p) => p.player === "p1").peerMean,
+  );
+  assert.equal(byLabel("2032 (Sleeper)", "p1").peers, 4);
+  assert.equal(byLabel("2032 (ESPN)", "p1").peers, 4);
 });

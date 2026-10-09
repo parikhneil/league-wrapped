@@ -82,12 +82,110 @@ button.on {
   text-underline-offset: 3px;
   margin: 0;
 }
+/* Title left, tabs right on one line. The whole header is pinned rather than
+   the nav alone: inside a flex row a sticky child can only stick within the
+   header's own box, which would scroll the tabs away with it. */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 28px;
+  flex-wrap: wrap;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.page-header h1 {
+  margin: 10px 0;
+}
+/* Two rows: the six groups, then the active group's sections. */
+.feature-nav {
+  margin-left: auto;
+}
+.feature-groups {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 10px 0 2px;
+}
+.feature-groups button {
+  font-weight: 600;
+}
 .feature-tabs {
   display: flex;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--line);
-  padding: 12px 0;
+  justify-content: flex-end;
+  padding: 2px 0 10px;
   position: relative;
+}
+.feature-tabs button {
+  font-size: 15px;
+}
+/* Underlined text, not filled pills: these are navigation, and a row of solid
+   capsules in the header competed with the page's own controls. Specificity
+   here has to beat the global `button` and `button.on` fills. */
+.feature-nav button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin: 0 0 0 20px;
+  padding: 6px 1px;
+  color: var(--muted);
+}
+.feature-nav button:hover {
+  border-color: transparent;
+  border-bottom-color: var(--line);
+  color: var(--fg);
+}
+.feature-nav button.on {
+  background: none;
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+.feature-nav button:focus-visible {
+  outline-offset: 0;
+}
+/* The landing menu: one card per group, every section one click away. */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin: 22px 0;
+}
+.menu-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--head);
+  padding: 12px 14px;
+}
+.menu-card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.menu-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  margin: 0;
+  padding: 7px 8px;
+  color: var(--accent);
+}
+.menu-link:hover {
+  background: var(--bg);
+  border-color: transparent;
+}
+/* A hidden group keeps its buttons in the DOM for chat-widget.js to click. */
+.feature-tabs[hidden] {
+  display: none;
 }
 .cards {
   display: grid;
@@ -209,11 +307,68 @@ a {
   .card strong {
     font-size: 22px;
   }
+  .page-header {
+    gap: 0;
+  }
+  .page-header h1 {
+    margin: 6px 0 0;
+  }
+  /* Full width once stacked, so the scrolling rows start at the left edge
+     instead of trailing off the right. */
+  .feature-nav {
+    width: 100%;
+    margin-left: 0;
+  }
+  .feature-groups,
+  .feature-tabs {
+    justify-content: flex-start;
+  }
+  .feature-nav button {
+    margin: 0 20px 0 0;
+  }
+  .feature-groups {
+    padding: 6px 0 2px;
+  }
+  .feature-tabs {
+    padding: 2px 0 6px;
+  }
+  /* Wrapping put a lone group on a third row and made the pinned nav taller
+     than it needs to be. Below this width each row scrolls sideways instead,
+     so the nav is always exactly two rows however many sections a group has. */
+  .feature-groups,
+  .feature-tabs:not([hidden]) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .feature-groups::-webkit-scrollbar,
+  .feature-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .feature-groups button,
   .feature-tabs button {
     font-size: 13px;
+    padding: 6px 1px;
+    flex: 0 0 auto;
   }
 }
 
+/* Two buttons that read as one control: a view switch, not two actions. */
+.switch {
+  display: inline-flex;
+  margin-right: 10px;
+}
+.switch button {
+  margin-right: 0;
+  border-radius: 0;
+}
+.switch button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+.switch button:last-child {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
 .select-field {
   display: inline-flex;
   align-items: center;
