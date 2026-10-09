@@ -574,3 +574,44 @@ test("peers never cross a season or a platform", () => {
   assert.equal(byLabel("2032 (Sleeper)", "p1").peers, 4);
   assert.equal(byLabel("2032 (ESPN)", "p1").peers, 4);
 });
+
+test("rivalry boards rank one-sided and frequent pairings with the leader first", () => {
+  const { rivalryBoards } = require("../league-stats.js");
+  const r = (a, b, w, l, t = 0) => ({ a, b, w, l, t, games: w + l + t, balance: Math.abs(w - l) });
+  const boards = rivalryBoards([
+    r("A", "B", 2, 2), // even, 4 meetings
+    r("C", "D", 0, 3), // D sweeps C in 3
+    r("E", "F", 2, 0), // lopsided but only 2 meetings
+    r("G", "H", 3, 1), // 4 meetings, 3-1
+    r("I", "J", 1, 0), // one meeting
+  ]);
+  assert.deepEqual(boards.oneSided.map((x) => `${x.a}>${x.b} ${x.w}-${x.l}`), ["D>C 3-0", "G>H 3-1"]);
+  assert.deepEqual(boards.frequent.slice(0, 2).map((x) => `${x.a}-${x.b}`), ["A-B", "G-H"]);
+  assert.equal(boards.frequent.length, 5);
+  assert.deepEqual(boards.competitive.map((x) => `${x.a}-${x.b}`), ["A-B", "G-H", "C-D", "E-F"]);
+});
+
+test("rivalries add only title-contention playoff games; placement games are consolation", () => {
+  const s = season("complete");
+  s.league.settings.last_scored_leg = 3;
+  // Week 1: a beat b, c beat d. Week 2: a-b tie, d beat c (regular season).
+  // Postseason: a beat b for the title; c beat d in the 3rd-place game (p: 3).
+  s.bracket = [
+    { r: 1, m: 1, p: 1, w: 1, l: 2 },
+    { r: 1, m: 2, p: 3, w: 3, l: 4 },
+  ];
+  const d = analyze([s]);
+  assert.deepEqual(d.playoffH2h.a.b, [1, 0, 0]);
+  assert.equal(d.playoffH2h.c, undefined, "a 3rd-place game is not a playoff game");
+  assert.deepEqual(d.consolationH2h.c.d, [1, 0, 0]);
+  const ab = d.rivalries.find((r) => r.a === "a" && r.b === "b");
+  assert.equal(`${ab.w}-${ab.l}-${ab.t}`, "2-0-1", "regular season 1-0-1 plus the title game");
+  assert.equal(ab.playoffGames, 1);
+  const cd = d.rivalries.find((r) => [r.a, r.b].sort().join() === "c,d");
+  assert.equal(cd.games, 2, "the placement game is left out");
+  assert.equal(cd.playoffGames, 0);
+  // Leader-first orientation flips the playoff record along with the totals.
+  const { rivalryBoards } = require("../league-stats.js");
+  const flipped = rivalryBoards([{ a: "x", b: "y", w: 0, l: 3, t: 0, games: 3, balance: 3, playoffW: 0, playoffL: 1, playoffT: 0, playoffGames: 1 }]);
+  assert.deepEqual([flipped.oneSided[0].a, flipped.oneSided[0].playoffW, flipped.oneSided[0].playoffL], ["y", 1, 0]);
+});

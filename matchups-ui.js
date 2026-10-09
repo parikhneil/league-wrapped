@@ -21,8 +21,24 @@
   const points = (value) => (finite(value) ? value.toFixed(1) : "—");
   const probability = (value) =>
     finite(value) ? `${(100 * value).toFixed(1)}%` : "—";
-  const odds = (value) =>
-    finite(value) ? `${value > 0 ? "+" : ""}${Math.round(value)}` : "—";
+  // "american" shows sportsbook-style prices (-110); "market" shows the same
+  // fair price as a prediction-market contract (51¢ pays $1 if it happens).
+  let priceStyle = "american";
+  try {
+    if (root.localStorage?.getItem("matchupPriceStyle") === "market") priceStyle = "market";
+  } catch {
+    /* storage blocked: keep the default */
+  }
+  const americanToProbability = (value) =>
+    value < 0 ? -value / (100 - value) : 100 / (value + 100);
+  const odds = (value) => {
+    if (!finite(value)) return "—";
+    if (priceStyle === "market") {
+      const cents = Math.round(100 * americanToProbability(value));
+      return cents >= 100 ? ">99¢" : cents <= 0 ? "<1¢" : `${cents}¢`;
+    }
+    return `${value > 0 ? "+" : ""}${Math.round(value)}`;
+  };
   const signed = (value) =>
     finite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(1)}` : "—";
   const date = (value) => {
@@ -248,7 +264,7 @@
     html += teams
       .map(
         (team) =>
-          `<div class="team-row"><div class="team-info"><div class="team-name">${esc(name(team))}</div><small>Roster ${esc(team.rosterId)}${team.coverage?.lineupSource ? ` · ${esc(lineupLabel(team.coverage.lineupSource))}` : ""}</small></div><div class="projection"><strong>${points(team.projectedPoints)}</strong><small>Mean pts</small></div><div class="moneyline"><strong>${odds(team.fairMoneyline)}</strong><small>Fair moneyline</small></div></div>`,
+          `<div class="team-row"><div class="team-info"><div class="team-name">${esc(name(team))}</div><small>Roster ${esc(team.rosterId)}${team.coverage?.lineupSource ? ` · ${esc(lineupLabel(team.coverage.lineupSource))}` : ""}</small></div><div class="projection"><strong>${points(team.projectedPoints)}</strong><small>Mean pts</small></div><div class="moneyline"><strong>${odds(team.fairMoneyline)}</strong><small>${priceStyle === "market" ? "Fair win price" : "Fair moneyline"}</small></div></div>`,
       )
       .join("");
     const slots = (data.league.roster_positions || []).filter(
@@ -662,6 +678,19 @@
     selectedManager = event.target.value;
     render();
   });
+  const priceSelect = $("price-style");
+  if (priceSelect) {
+    priceSelect.value = priceStyle;
+    priceSelect.addEventListener("change", (event) => {
+      priceStyle = event.target.value === "market" ? "market" : "american";
+      try {
+        root.localStorage?.setItem("matchupPriceStyle", priceStyle);
+      } catch {
+        /* storage blocked: the choice lasts for this visit */
+      }
+      render();
+    });
+  }
   $("refresh-data").addEventListener("click", () => {
     if (data?.league?.league_id)
       return loadTarget(data.league.league_id, {

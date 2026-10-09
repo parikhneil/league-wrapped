@@ -145,6 +145,18 @@ button.on {
   color: var(--fg);
   border-bottom-color: var(--accent);
 }
+.feature-nav .nav-page-link {
+  margin: 0 0 0 20px;
+  padding: 6px 1px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.feature-nav .nav-page-link:hover {
+  color: var(--fg);
+  border-bottom-color: var(--line);
+}
 .feature-nav button:focus-visible {
   outline-offset: 0;
 }

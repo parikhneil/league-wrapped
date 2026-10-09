@@ -422,7 +422,7 @@ def main():
     nav = " ".join(f'<a href="{f}">{esc(label)}</a>' for f, _, _, label in pages)
     if "Sleeper" in srcs:
         nav += ' <a href="players.html">Players</a>'
-        nav += ' <a href="matchups.html">Upcoming matchups</a>'
+        nav += ' <a href="matchups.html">Betting lines</a>'
     for filename, include, title, _ in pages:
         Path(filename).write_text(
             build_page(include, seasons, title, nav), encoding="utf-8")
