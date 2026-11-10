@@ -1082,6 +1082,26 @@
           intCell(r.uncounted),
         ]),
       );
+    function historicalLineup(uid) {
+      const best = D.bestHistoricalLineups[uid];
+      const heading = "<h3>Best lineup · all time</h3>";
+      if (!best?.filled)
+        return heading + '<p class="sub">A lineup is unavailable with the saved starter scores and roster settings.</p>';
+      const complete = best.filled === best.lineup.length;
+      return heading +
+        `<p class="sub">Highest-scoring combination of this manager’s recorded starts across completed matchups in this platform view. Each player can appear once. Uses the ${esc(best.format)} lineup format.</p>` +
+        cards([[complete ? "Lineup total" : "Partial lineup total", num(best.points)]]) +
+        table(
+          ["Slot", "Player", "Season", "Week", "Points"],
+          best.lineup.map(({ slot, start }) => [
+            slot.replaceAll("_", " "),
+            start?.player ?? "No eligible start",
+            start?.season ?? "—",
+            start?.week ?? "—",
+            num(start?.points ?? null),
+          ]),
+        );
+    }
     function profile() {
       if (!selected) return "<p>No managers available.</p>";
       const a = D.all[selected],
@@ -1116,6 +1136,7 @@
         `<h3>${esc(n(selected))}</h3>` +
         metricCards(a) +
         `<button data-download="${esc(selected)}">Download recap card (PNG)</button>` +
+        historicalLineup(selected) +
         "<h3>Season history</h3>" +
         table(
           ["Season", "Record", "Win %", "PF/game", "Playoffs", "Title"],

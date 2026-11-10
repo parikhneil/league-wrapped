@@ -161,6 +161,57 @@ test("filtered weekly rows summarize deterministically without duplicate counts"
   assert.equal(summarizePlayerStarts(rows.filter((w) => w.postseason))[0].starts, 1);
 });
 
+test("historical lineups maximize points across seasons with distinct players and legal flex picks", () => {
+  const old = season({ src: "ESPN", year: "2024", starters: ["espn:42", "allen", "rb"],
+    players: {
+      "espn:42": { position: "WR", gsis_id: "00-123" },
+      allen: { position: "QB" },
+      rb: { position: "RB" },
+    } });
+  old.league.settings.lineup_slots = { QB: 1, RB: 1, WR: 1 };
+  old.weeks[0][0].players_points = { "espn:42": 45, allen: 50, rb: 36 };
+  const current = season({ year: "2026", starters: ["dual", "jsn", "wr2", "missing"],
+    players: {
+      dual: { fantasy_positions: ["WR", "RB"], gsis_id: "00-123" },
+      jsn: { position: "WR" },
+      wr2: { position: "WR" },
+      missing: { position: "WR" },
+      bench: { position: "RB" },
+    } });
+  current.league.roster_positions = ["QB", "WR", "WR", "FLEX", "BN"];
+  const matchup = current.weeks[0][0];
+  matchup.players = [...matchup.starters, "bench"];
+  matchup.players_points = { dual: 40, jsn: 37, wr2: 35, missing: null, bench: 100 };
+  const future = structuredClone(current.weeks[0]);
+  future[0].players_points.jsn = 999;
+  current.weeks.push(future);
+
+  const best = analyze([current, old]).bestHistoricalLineups.manager;
+  assert.equal(best.format, "2026 (Sleeper)");
+  assert.equal(best.filled, 4);
+  assert.equal(best.points, 168);
+  const rows = best.lineup.map(({ slot, start }) => [slot, start.player, start.season, start.week]);
+  assert.deepEqual(rows.sort((a, b) => a[1].localeCompare(b[1])), [
+    ["QB", "allen", "2024 (ESPN)", 1],
+    ["WR", "espn:42", "2024 (ESPN)", 1],
+    ["WR", "jsn", "2026 (Sleeper)", 1],
+    ["FLEX", "rb", "2024 (ESPN)", 1],
+  ]);
+});
+
+test("historical lineups fill known slots with zero and negative scores and mark gaps", () => {
+  const s = season({ starters: ["zero", "negative", "unknown"], players: {
+    zero: { position: "QB" }, negative: { position: "K" }, unknown: { position: "WR" },
+  } });
+  s.league.roster_positions = ["QB", "WR", "K"];
+  s.weeks[0][0].players_points = { zero: 0, negative: -2, unknown: null };
+  const { manager, opponent } = analyze([s]).bestHistoricalLineups;
+  assert.equal(manager.points, -2);
+  assert.equal(manager.filled, 2);
+  assert.deepEqual(manager.lineup.map(({ start }) => start?.points ?? null), [0, null, -2]);
+  assert.equal(opponent, undefined);
+});
+
 test("the real snapshot matches a manual count of recorded starters in paired completed games", () => {
   const raw = fs.readFileSync("league-data.js", "utf8").trim();
   const seasons = JSON.parse(raw.replace(/^window\.LEAGUE_SNAPSHOT\s*=\s*/, "").replace(/;$/, ""));
