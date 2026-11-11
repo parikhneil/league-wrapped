@@ -4982,7 +4982,7 @@ a {
         x = (i) => left + (i * (W - left - right)) / Math.max(1, weeks.length - 1),
         y = (r) => top + ((r - 1) * (H - top - bottom)) / Math.max(1, size - 1),
         color = (m) => colors[managers.indexOf(m) % colors.length],
-        hot = (m) => !prHighlight.length || prHighlight.includes(m);
+        hot = (m) => prHighlight.includes(m);
       let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly power rankings, rank 1 at the top"><title>Weekly power rankings</title>`;
       for (let r = 1; r <= size; r++)
         svg += `<line x1="${left}" x2="${W - right}" y1="${y(r)}" y2="${y(r)}" stroke="currentColor" opacity=".12"/><text x="${left - 10}" y="${y(r) + 4}" text-anchor="end">#${r}</text>`;
