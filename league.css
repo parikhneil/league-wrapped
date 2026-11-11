@@ -471,3 +471,19 @@ a {
 .saber-chart svg {
   max-width: 950px;
 }
+.pr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+.pr-chip {
+  margin: 0;
+  padding: 5px 12px;
+  font-size: 14px;
+}
+.pr-chip.on {
+  background: var(--head);
+  color: var(--fg);
+  font-weight: 600;
+}

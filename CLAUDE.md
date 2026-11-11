@@ -98,6 +98,7 @@ returns one `D` object keyed roughly by feature: `all`, `bySeason`, `saber`,
 | `league-ui.js` | Everything visual: ~2300 lines, one large `mount(el, seasons, names)`, plus `table()` and `sort()`. All tabs, filters, charts, PNG recap cards. |
 | `league.css` | Responsive styling + dark mode. |
 | `index.html` | Live page. `DEFAULT_LEAGUE` constant, Sleeper API client, `loadHistory()` walks `previous_league_id` backwards (with cycle detection), Combined/Sleeper/ESPN switcher, falls back to the saved snapshot per-request when the API fails. |
+| `power-rankings-data.js` / `power-rankings.js` | Hand-written weekly power rankings (data) and their analyzer (rank series, movement, weeks at #1). Default league only: `index.html` passes them to `mount()` as `opts.powerRankings`, which adds the `power` tab. `power` is not a chat section. Week N = rankings heading into week N. |
 | `chat-widget.js` / `chat-widget.css` | LeagueGuide UI; sends the current section/manager/season/platform filters as `selection`. |
 
 ### Generated (committed — do not hand-edit)

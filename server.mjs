@@ -46,6 +46,8 @@ const ASSETS = new Map([
     "trade-analysis.js",
     "comeback-history.js",
     "league-ui.js",
+    "power-rankings.js",
+    "power-rankings-data.js",
     "chat-widget.js",
     "matchups-ui.js",
     "matchup-lines.js",

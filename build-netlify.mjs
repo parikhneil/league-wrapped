@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 export const PUBLIC_ASSETS = Object.freeze([
   "index.html", "report.html", "report_espn.html", "report_sleeper.html", "players.html",
   "espn_league.js", "league-data.js", "league-stats.js", "league-ui.js", "league.css",
-  "trade-analysis.js", "comeback-history.js",
+  "trade-analysis.js", "comeback-history.js", "power-rankings.js", "power-rankings-data.js",
   "chat-widget.js", "chat-widget.css",
   "matchups.html", "matchups.css", "matchups-ui.js", "matchup-lines.js",
   "sleeper-forecast-data.js", "matchup-data.js", "forecast-players.js",

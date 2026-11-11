@@ -15,6 +15,10 @@ For a dashboard without chat, `python3 -m http.server 8000 --bind 127.0.0.1` sti
 
 `report.html`, `report_sleeper.html`, and `report_espn.html` are self-contained saved dashboards: you can open them directly without a server or internet. They require JavaScript. `players.html` is the player-history search.
 
+## Power rankings
+
+The **Power rankings** tab appears only for our league. It shows a week-by-week rank chart, each week's list with records and takes, and a season summary (weeks at #1, top-3 finishes, average rank, biggest moves). Week N means the ranking heading into week N; the first entry is the preseason ranking. To add a week, append it to `power-rankings-data.js`, listing every manager in rank order with the same name each week. Movement is calculated from the order, so you don't need to type +/- values.
+
 ## LeagueGuide chat
 
 Click **Ask LeagueGuide** on the dashboard or a saved report to ask about statistics, managers, matchups, drafts, transactions, lineup regret, NFL opportunity models, filters, and the Players page. Questions use the current section, manager, season, and platform filters. Answers link to relevant sections. The assistant analyzes the saved league snapshot; live Sleeper refreshes may be newer. When you load another league, it can explain metrics and site features but does not invent analysis of that league's unavailable data.

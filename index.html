@@ -32,6 +32,8 @@
     <script src="league-stats.js"></script>
     <script src="trade-analysis.js"></script>
     <script src="comeback-history.js"></script>
+    <script src="power-rankings-data.js"></script>
+    <script src="power-rankings.js"></script>
     <script src="league-ui.js"></script>
     <script src="chat-widget.js" defer></script>
     <script>
@@ -153,6 +155,8 @@
           $("out"),
           seasons,
           isDefault ? window.LEAGUE_NAMES || {} : {},
+          // Power rankings are hand-written for our league only.
+          isDefault ? { powerRankings: window.POWER_RANKINGS } : {},
         );
         document
           .querySelectorAll("#tabs button")

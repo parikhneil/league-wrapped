@@ -471,6 +471,22 @@ a {
 .saber-chart svg {
   max-width: 950px;
 }
+.pr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 4px;
+}
+.pr-chip {
+  margin: 0;
+  padding: 5px 12px;
+  font-size: 14px;
+}
+.pr-chip.on {
+  background: var(--head);
+  color: var(--fg);
+  font-weight: 600;
+}
 
 .league-guide {
   --lg-bg: var(--bg, #f7f9fc);
@@ -2713,7 +2729,7 @@ a {
   function table(headers, rows) {
     return `<div class="scroll"><table class="sortable"><thead><tr>${headers.map((h) => `<th scope="col" tabindex="0">${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.length ? rows.map((r) => `<tr>${r.map((c) => `<td${Array.isArray(c) ? ` data-v="${esc(c[1])}"` : ""}>${c?.html !== undefined ? c.html : esc(Array.isArray(c) ? c[0] : c)}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${headers.length}">No data available for this selection.</td></tr>`}</tbody></table></div>`;
   }
-  function mount(el, seasons, names = {}) {
+  function mount(el, seasons, names = {}, opts = {}) {
     const D = root.LeagueStats.analyze(seasons, names),
       n = (u) => D.names[u] || "Unknown",
       ids = Object.keys(D.all).sort((a, b) => n(a).localeCompare(n(b)));
@@ -2751,6 +2767,8 @@ a {
       profileTradeSort = "net",
       profileWaiverSort = "pts",
       profileMoveView = "trades",
+      prHighlight = [],
+      prWeek = "latest",
       saberSeason = "all",
       saberManager = "all",
       saberMetric = "scoringPlus",
@@ -4951,6 +4969,95 @@ a {
       svg += "</svg>";
       return `<div class="chart">${svg}</div><div class="legend">${series.map((u, i) => `<span style="border-left:4px solid ${colors[i % colors.length]}">${esc(n(u))}</span>`).join("")}</div>`;
     }
+    function powerRankings() {
+      const { weeks, managers, ranks, lists, summary, size } = PR;
+      const wi =
+        prWeek === "latest" ? weeks.length - 1 : Math.max(0, Number(prWeek)),
+        W = 900,
+        H = 420,
+        left = 44,
+        right = 90,
+        top = 16,
+        bottom = 40,
+        x = (i) => left + (i * (W - left - right)) / Math.max(1, weeks.length - 1),
+        y = (r) => top + ((r - 1) * (H - top - bottom)) / Math.max(1, size - 1),
+        color = (m) => colors[managers.indexOf(m) % colors.length],
+        hot = (m) => !prHighlight.length || prHighlight.includes(m);
+      let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weekly power rankings, rank 1 at the top"><title>Weekly power rankings</title>`;
+      for (let r = 1; r <= size; r++)
+        svg += `<line x1="${left}" x2="${W - right}" y1="${y(r)}" y2="${y(r)}" stroke="currentColor" opacity=".12"/><text x="${left - 10}" y="${y(r) + 4}" text-anchor="end">#${r}</text>`;
+      weeks.forEach((w, i) => {
+        svg += `<text x="${x(i)}" y="${H - 14}" text-anchor="middle">${esc(i ? `W${w.week}` : "Pre")}</text>`;
+      });
+      // Draw muted lines first so the highlighted manager sits on top.
+      const order = [...managers].sort((a, b) => hot(a) - hot(b));
+      for (const m of order) {
+        const on = hot(m),
+          c = on ? color(m) : "currentColor",
+          pts = ranks[m]
+            .map((r, i) => (r == null ? null : `${x(i)},${y(r)}`))
+            .filter(Boolean);
+        svg += `<polyline fill="none" stroke="${c}" stroke-width="${on ? 2.5 : 1.5}" opacity="${on ? 1 : 0.25}" stroke-linejoin="round" stroke-linecap="round" points="${pts.join(" ")}"/>`;
+        ranks[m].forEach((r, i) => {
+          if (r != null)
+            svg += `<circle cx="${x(i)}" cy="${y(r)}" r="${on ? 4 : 3}" fill="${c}" opacity="${on ? 1 : 0.25}"><title>${esc(m)}: #${r} · ${esc(weeks[i].label)}</title></circle>`;
+        });
+        const lastR = ranks[m][weeks.length - 1];
+        if (on && lastR != null)
+          svg += `<text x="${x(weeks.length - 1) + 10}" y="${y(lastR) + 4}" style="fill:${c}">${esc(m)}</text>`;
+      }
+      svg += "</svg>";
+      const move = (d) =>
+        d == null ? "—" : d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "=";
+      const swing = (s) => (s ? `${s.by > 0 ? "+" : ""}${s.by} (${s.week})` : "—");
+      const list = lists[wi];
+      return (
+        '<h2>Power rankings</h2><p class="sub">Hand-written weekly rankings for our league. Each week is the ranking heading into that week; Pre is the preseason ranking. Movement is calculated from the rank order. Click names to highlight them.</p>' +
+        `<div class="pr-chips" role="group" aria-label="Highlight managers">${[...managers]
+          .sort()
+          .map((m) => {
+            const on = prHighlight.includes(m);
+            return `<button class="pr-chip${on ? " on" : ""}" data-pr-highlight="${esc(m)}" aria-pressed="${on}"${on ? ` style="border-color:${color(m)};box-shadow:inset 0 -3px 0 ${color(m)}"` : ""}>${esc(m)}</button>`;
+          })
+          .join("")}${prHighlight.length ? '<button class="pr-chip" data-pr-highlight="">Clear</button>' : ""}</div><div class="filters">` +
+        select(
+          "pr-week",
+          "Week",
+          [
+            ["latest", `Latest (${weeks[weeks.length - 1].label})`],
+            ...weeks.map((w, i) => [String(i), w.label]),
+          ],
+          prWeek,
+        ) +
+        `</div><div class="chart">${svg}</div>` +
+        `<h3>${esc(weeks[wi].label)} rankings</h3>` +
+        table(
+          ["Rank", "Manager", "Record", "Move"],
+          list.map((e) => [
+            [`#${e.rank}`, e.rank],
+            e.manager,
+            e.record,
+            [move(e.move), e.move ?? 0],
+          ]),
+        ) +
+        "<h3>Season summary</h3>" +
+        table(
+          ["Manager", "Current", "Weeks at #1", "Top 3", "Last place", "Avg rank", "Best", "Worst", "Biggest rise", "Biggest drop"],
+          summary.map((s) => [
+            s.manager,
+            [s.current == null ? "—" : `#${s.current}`, s.current ?? 99],
+            s.first,
+            s.top3,
+            s.last,
+            [s.avg == null ? "—" : s.avg.toFixed(1), s.avg ?? 99],
+            [s.best == null ? "—" : `#${s.best}`, s.best ?? 99],
+            [s.worst == null ? "—" : `#${s.worst}`, s.worst ?? 99],
+            [swing(s.rise), s.rise?.by ?? 0],
+            [swing(s.fall), s.fall?.by ?? 0],
+          ]),
+        )
+      );
+    }
     function charts() {
       const seasons = D.bySeason.filter(
           (s) => chartSource === "all" || s.src === chartSource,
@@ -5145,6 +5252,15 @@ a {
       opportunity: ["xFP & opportunity", opportunity],
       luck: ["Luck rankings", luck],
     };
+    // Power rankings are hand-written for the default league only, so index.html
+    // passes them in just for that league and the tab does not exist otherwise.
+    // Like "home", "power" is not a chat section: chat-widget.js falls back to
+    // overview for ids it does not know, which keeps invariant 8 untouched.
+    const PR =
+      opts.powerRankings && root.PowerRankings
+        ? root.PowerRankings.analyze(opts.powerRankings)
+        : null;
+    if (PR && PR.weeks.length) sections.power = ["Power rankings", powerRankings];
     // Grouping is presentation only: sixteen flat tabs do not fit on one row.
     // The active group is derived from the active section, so navigation keeps
     // one piece of state and a group needs no id of its own.
@@ -5156,6 +5272,7 @@ a {
       ["League history", ["alltime", "charts", "records", "comebacks"]],
       ["Stat Lab", ["saber", "opportunity", "luck"]],
     ];
+    if (sections.power) groups.splice(2, 0, ["Power rankings", ["power"]]);
     const groupOf = (id) =>
       Math.max(
         groups.findIndex(([, members]) => members.includes(id)),
@@ -5324,6 +5441,14 @@ a {
         selected = b.dataset.manager;
         section = "profile";
         draw();
+      } else if (b?.dataset.prHighlight !== undefined) {
+        const m = b.dataset.prHighlight;
+        prHighlight = !m
+          ? []
+          : prHighlight.includes(m)
+            ? prHighlight.filter((x) => x !== m)
+            : [...prHighlight, m];
+        draw();
       } else if (b?.dataset.profileView) {
         profileMoveView = b.dataset.profileView;
         draw();
@@ -5367,6 +5492,9 @@ a {
     };
     el.onchange = (e) => {
       switch (e.target.id) {
+        case "pr-week":
+          prWeek = e.target.value;
+          break;
         case "profile-manager":
           selected = e.target.value;
           break;
