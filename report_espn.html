@@ -972,6 +972,54 @@ a {
     (typeof value === "number" ||
       (typeof value === "string" && value.trim() !== "")) &&
     Number.isFinite(Number(value));
+  function playerPositions(player) {
+    const positions =
+      (Array.isArray(player.fantasy_positions) && player.fantasy_positions.length
+        ? player.fantasy_positions
+        : null) ||
+      (Array.isArray(player.positions) && player.positions.length
+        ? player.positions
+        : null) ||
+      (player.position || player.pos ? [player.position || player.pos] : []);
+    return positions.map(normalizeSlot);
+  }
+  const fitsSlot = (positions, slot) =>
+    positions.some((position) => slotPositions[slot].includes(position));
+
+  function matchLineup(slotCount, playerOptions, fillSlots) {
+    const size = 1 << slotCount,
+      best = new Float64Array(size),
+      selections = Array(size);
+    best.fill(-Infinity);
+    best[0] = 0;
+    selections[0] = [];
+    for (const options of playerOptions) {
+      if (!options.length) continue;
+      // Each group is one player. Descending masks keep them from filling two slots.
+      for (let mask = size - 1; mask >= 0; mask--) {
+        if (best[mask] === -Infinity) continue;
+        for (const option of options) {
+          const bit = 1 << option.slotIndex,
+            next = mask | bit,
+            points = best[mask] + option.points;
+          if (!(mask & bit) && points > best[next]) {
+            best[next] = points;
+            selections[next] = [...selections[mask], option];
+          }
+        }
+      }
+    }
+    let maximum = 0;
+    for (let mask = 1; mask < size; mask++) {
+      if (!selections[mask]) continue;
+      const filled = fillSlots
+        ? selections[mask].length - selections[maximum].length
+        : 0;
+      if (filled > 0 || (filled === 0 && best[mask] > best[maximum])) maximum = mask;
+    }
+    return { points: best[maximum], selections: selections[maximum] };
+  }
+
   function optimizeLineup(matchup, season) {
     const slots = lineupSlots(season);
     if (
@@ -1004,24 +1052,10 @@ a {
       const points = matchup.players_points[pid],
         player = season.players?.[pid];
       if (!validScore(points) || !player) return null;
-      const positions =
-        (Array.isArray(player.fantasy_positions) &&
-        player.fantasy_positions.length
-          ? player.fantasy_positions
-          : null) ||
-        (Array.isArray(player.positions) && player.positions.length
-          ? player.positions
-          : null) ||
-        (player.position || player.pos ? [player.position || player.pos] : []);
-      const eligible = (Array.isArray(positions) ? positions : [positions]).map(
-        normalizeSlot,
-      );
-      if (!eligible.length) return null;
+      const positions = playerPositions(player);
+      if (!positions.length) return null;
       masks[pid] = slots.reduce(
-        (mask, slot, i) =>
-          eligible.some((p) => slotPositions[slot].includes(p))
-            ? mask | (1 << i)
-            : mask,
+        (mask, slot, i) => fitsSlot(positions, slot) ? mask | (1 << i) : mask,
         0,
       );
       scores[pid] = Number(points);
@@ -1043,40 +1077,18 @@ a {
       Math.abs(actual - Number(matchup.points)) > 0.1
     )
       return null;
-    const size = 1 << slots.length,
-      best = new Float64Array(size),
-      selections = Array(size);
-    best.fill(-Infinity);
-    best[0] = 0;
-    selections[0] = [];
-    for (const pid of ids) {
-      if (excluded.has(pid)) continue;
-      // Descending masks prevent the same player from filling multiple slots.
-      for (let mask = size - 1; mask >= 0; mask--) {
-        if (best[mask] === -Infinity) continue;
-        for (let i = 0; i < slots.length; i++) {
-          const bit = 1 << i,
-            next = mask | bit;
-          if (
-            masks[pid] & bit &&
-            !(mask & bit) &&
-            best[mask] + scores[pid] > best[next]
-          ) {
-            best[next] = best[mask] + scores[pid];
-            selections[next] = [...selections[mask], pid];
-          }
-        }
-      }
-    }
-    let maximum = 0;
+    const playerOptions = ids.filter((pid) => !excluded.has(pid)).map((pid) =>
+      slots.flatMap((_, slotIndex) => masks[pid] & (1 << slotIndex)
+        ? [{ slotIndex, points: scores[pid], pid }]
+        : []),
+    );
     // Platforms permit empty starter slots: a negative scorer can be benched.
-    for (let mask = 1; mask < size; mask++)
-      if (best[mask] > best[maximum]) maximum = mask;
+    const best = matchLineup(slots.length, playerOptions, false);
     return {
-      optimum: best[maximum],
+      optimum: best.points,
       actual,
-      regret: Math.max(0, best[maximum] - actual),
-      starters: selections[maximum],
+      regret: Math.max(0, best.points - actual),
+      starters: best.selections.map(({ pid }) => pid),
     };
   }
   const mean = (xs) =>
@@ -1293,6 +1305,7 @@ a {
             const score = m.players_points?.[pid];
             D.playerStartWeeks.push({
               uid, ...player, season, year, src: s.src, week,
+              positions: playerPositions(s.players?.[pid] || {}),
               postseason: week >= start,
               points: validScore(score) ? Number(score) : null,
             });
@@ -1308,6 +1321,43 @@ a {
       row.missingWeeks = row.completedWeekNumbers.filter((w) => !row.lineupWeekNumbers.includes(w));
       D.startCoverage.push(row);
     }
+  }
+  function bestHistoricalLineups(seasons, starts) {
+    const formats = seasons
+      .map((season) => ({ season, slots: lineupSlots(season) }))
+      .filter(({ slots }) => slots)
+      .sort((a, b) => Number(b.season.league.season) - Number(a.season.league.season));
+    if (!formats.length) return {};
+    const { season, slots } = formats[0];
+    const byManager = new Map();
+    for (const start of starts) {
+      if (start.points === null) continue;
+      if (!byManager.has(start.uid)) byManager.set(start.uid, new Map());
+      const players = byManager.get(start.uid);
+      if (!players.has(start.playerKey)) players.set(start.playerKey, []);
+      const options = players.get(start.playerKey);
+      // Keep the best recorded start per eligible slot, using that week's eligibility.
+      slots.forEach((slot, i) => {
+        if (fitsSlot(start.positions, slot) && (!options[i] || start.points > options[i].points))
+          options[i] = { slotIndex: i, points: start.points, start };
+      });
+    }
+    return Object.fromEntries([...byManager].map(([uid, players]) => {
+      const best = matchLineup(
+        slots.length,
+        [...players.values()].map((options) => options.filter(Boolean)),
+        true,
+      );
+      const selected = new Map(
+        best.selections.map(({ slotIndex, start }) => [slotIndex, start]),
+      );
+      return [uid, {
+        format: `${season.league.season} (${season.src})`,
+        points: best.selections.length ? best.points : null,
+        filled: best.selections.length,
+        lineup: slots.map((slot, i) => ({ slot, start: selected.get(i) ?? null })),
+      }];
+    }));
   }
   function analyze(seasons, namesOverride = {}) {
     const D = {
@@ -1809,6 +1859,7 @@ a {
     }
     Object.assign(D.names, namesOverride);
     D.playerStarts = summarizePlayerStarts(D.playerStartWeeks);
+    D.bestHistoricalLineups = bestHistoricalLineups(seasons, D.playerStartWeeks);
     const career = {};
     for (const row of D.saber) {
       const aggregate = (career[row.uid] ??= {
@@ -3793,6 +3844,26 @@ a {
           intCell(r.uncounted),
         ]),
       );
+    function historicalLineup(uid) {
+      const best = D.bestHistoricalLineups[uid];
+      const heading = "<h3>Best lineup · all time</h3>";
+      if (!best?.filled)
+        return heading + '<p class="sub">A lineup is unavailable with the saved starter scores and roster settings.</p>';
+      const complete = best.filled === best.lineup.length;
+      return heading +
+        `<p class="sub">Highest-scoring combination of this manager’s recorded starts across completed matchups in this platform view. Each player can appear once. Uses the ${esc(best.format)} lineup format.</p>` +
+        cards([[complete ? "Lineup total" : "Partial lineup total", num(best.points)]]) +
+        table(
+          ["Slot", "Player", "Season", "Week", "Points"],
+          best.lineup.map(({ slot, start }) => [
+            slot.replaceAll("_", " "),
+            start?.player ?? "No eligible start",
+            start?.season ?? "—",
+            start?.week ?? "—",
+            num(start?.points ?? null),
+          ]),
+        );
+    }
     function profile() {
       if (!selected) return "<p>No managers available.</p>";
       const a = D.all[selected],
@@ -3827,6 +3898,7 @@ a {
         `<h3>${esc(n(selected))}</h3>` +
         metricCards(a) +
         `<button data-download="${esc(selected)}">Download recap card (PNG)</button>` +
+        historicalLineup(selected) +
         "<h3>Season history</h3>" +
         table(
           ["Season", "Record", "Win %", "PF/game", "Playoffs", "Title"],
