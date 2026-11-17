@@ -180,6 +180,23 @@
           ["Abhi", "0-9"],
         ],
       },
+      {
+        week: 11,
+        entries: [
+          ["Koji", "7-3"],
+          ["Winston", "7-3"],
+          ["Raf", "6-4"],
+          ["Sath", "6-4"],
+          ["Arnav", "7-3"],
+          ["Ani", "6-4"],
+          ["Eka", "4-6"],
+          ["Neil", "5-5"],
+          ["Shravan", "3-7"],
+          ["Safwan", "5-5"],
+          ["Abhi", "1-9"],
+          ["Mayank", "3-7"],
+        ],
+      },
     ],
   };
   if (typeof module !== "undefined") module.exports = data;
